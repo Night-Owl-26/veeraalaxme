@@ -20,6 +20,10 @@ import ComparePage from "./pages/ComparePage";
 import AdminPage from "./pages/AdminPage";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
+import VastuAdvisorPage from "./pages/VastuAdvisorPage";
+import LandVastuPage from "./pages/LandVastuPage";
+import HomeVastuPage from "./pages/HomeVastuPage";
+import VastuReportsPage from "./pages/VastuReportsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function Shell() {
@@ -47,6 +51,12 @@ function Shell() {
             <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/compare" element={<ComparePage />} />
 
+            <Route path="/vastu" element={<VastuAdvisorPage />} />
+            <Route path="/vastu/land" element={<LandVastuPage />} />
+            <Route path="/vastu/home" element={<HomeVastuPage />} />
+            <Route path="/vastu/reports" element={<ProtectedRoute><VastuReportsPage /></ProtectedRoute>} />
+            <Route path="/vastu/reports/:id" element={<ProtectedRoute><VastuReportsPage /></ProtectedRoute>} />
+
             <Route path="/saved" element={<ProtectedRoute><FeedPage mode="saved" /></ProtectedRoute>} />
             <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
             <Route path="/chat/:threadId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
@@ -63,7 +73,7 @@ function Shell() {
       </main>
 
       <Footer />
-      <MobileTabBar compareCount={compareIds.length} />
+      <MobileTabBar />
       {showEmi && <EmiCalculatorModal onClose={() => setShowEmi(false)} />}
     </div>
   );

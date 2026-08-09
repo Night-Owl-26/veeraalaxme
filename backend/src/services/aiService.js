@@ -41,4 +41,29 @@ async function generateVastuInsight({ facing, kitchenDir, poojaRoom }) {
   return callClaude(prompt, 300);
 }
 
-module.exports = { callClaude, generatePropertyDescription, generateVastuInsight };
+// Explains a Land/Home Vastu analysis in plain language, grounded ONLY in the
+// rules the deterministic engine (vastuEngine.js) actually fired — the model
+// is explicitly told not to invent facts, scores, or Vastu claims beyond what
+// it's handed. The score and every recommendation already exist before this
+// is called; this function's only job is to narrate them naturally.
+async function generateVastuExplanation({ type, overallScore, categoryScores, firedRules }) {
+  const positives = firedRules.filter((r) => r.severity === "POSITIVE");
+  const concerns = firedRules.filter((r) => r.severity !== "POSITIVE");
+
+  const summarizeRule = (r) => `- [${r.category}] ${r.explanation}`;
+
+  const prompt = `You are a Vastu Shastra advisor for an Indian real-estate app called VasthuConnect. Below is a ${type === "LAND" ? "land plot" : "home"} Vastu analysis that was already computed by a deterministic rule engine — the score and every finding are final and already correct. Your ONLY job is to summarize these findings in warm, plain, conversational English for the homeowner. Do NOT invent any new Vastu claims, rules, or recommendations beyond what is listed below. Do NOT state or imply a different score than the one given. Do NOT use markdown headers, bullet points, or bold text — write flowing paragraphs only. Keep it under 140 words. End with one encouraging, practical closing sentence.
+
+Overall score: ${overallScore ?? "not enough data yet"} / 100
+Category scores: ${JSON.stringify(categoryScores)}
+
+Positive findings:
+${positives.length ? positives.map(summarizeRule).join("\n") : "(none)"}
+
+Findings to review:
+${concerns.length ? concerns.map(summarizeRule).join("\n") : "(none)"}`;
+
+  return callClaude(prompt, 350);
+}
+
+module.exports = { callClaude, generatePropertyDescription, generateVastuInsight, generateVastuExplanation };

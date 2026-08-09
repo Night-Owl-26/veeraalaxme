@@ -25,9 +25,30 @@ enum PropertyStatus {
 
 enum Facing {
   N
+  NE
   E
+  SE
   S
+  SW
   W
+  NW
+}
+
+enum VastuPropertyType {
+  LAND
+  HOME
+}
+
+enum RuleSeverity {
+  POSITIVE
+  CAUTION
+  CONCERN
+}
+
+enum RuleConfidence {
+  HIGH
+  MEDIUM
+  LOW
 }
 
 enum ReportStatus {
@@ -78,6 +99,7 @@ model User {
   refreshTokens    RefreshToken[]
   payments         Payment[]
   auditLogs        AuditLog[]
+  vastuAnalyses    VastuAnalysis[]
 
   @@index([role])
   @@index([phone])
@@ -163,6 +185,7 @@ model Property {
   savedBy          SavedProperty[]
   chatThreads      ChatThread[]
   reports          Report[]
+  vastuAnalyses    VastuAnalysis[]
 
   @@index([status])
   @@index([type])
@@ -324,4 +347,52 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([actorId])
   @@index([createdAt])
+}
+
+// The Vastu rule engine's source of truth. Every rule is a single, testable
+// field/value check — the engine (see backend/src/services/vastuEngine.js)
+// evaluates every active rule against the given input and sums scoreWeight
+// per category. Scores are never invented by AI; the AI layer only explains
+// rules this table already fired (see aiService.generateVastuExplanation).
+model VastuRule {
+  id            String             @id @default(uuid())
+  code          String             @unique // stable natural key, used for idempotent seeding
+  category      String             // "plot" | "facing" | "entrance" | "kitchen" | "bedroom" | "pooja" | "water" | "bathroom" | "staircase" | "slope"
+  propertyType  VastuPropertyType? // null = applies to both LAND and HOME
+  field         String             // input field this rule inspects, e.g. "entranceDir", "kitchenDir", "plotShape"
+  matchValues   String[]           // the field values this rule fires for
+  severity      RuleSeverity
+  scoreWeight   Int                // added to the category score when the rule fires (can be negative)
+  recommendation String            @db.Text
+  explanation   String             @db.Text
+  tradition     String             @default("General Vastu Shastra")
+  source        String?
+  confidence    RuleConfidence     @default(MEDIUM)
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([category])
+  @@index([propertyType])
+  @@index([field])
+}
+
+model VastuAnalysis {
+  id             String            @id @default(uuid())
+  userId         String?
+  propertyId     String?
+  type           VastuPropertyType
+  input          Json              // the full form input, for reproducibility
+  overallScore   Int
+  categoryScores Json              // { plot: 82, facing: 90, ... }
+  firedRules     Json              // [{ ruleId, code, category, severity, field, matchedValue, weight, recommendation, explanation }]
+  aiExplanation  String?           @db.Text
+  createdAt      DateTime          @default(now())
+
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property       Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([type])
 }

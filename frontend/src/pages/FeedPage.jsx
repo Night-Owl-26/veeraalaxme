@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, Compass } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { Search, SlidersHorizontal, Compass, Mountain, Home as HomeIcon } from "lucide-react";
 import { propertiesApi } from "../api/properties";
 import PropertyCard from "../components/property/PropertyCard";
 import PropertyCardSkeleton from "../components/property/PropertyCardSkeleton";
@@ -102,6 +102,26 @@ export default function FeedPage({ mode = "all" }) {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--brick)" }} />
             )}
           </button>
+        </div>
+      )}
+
+      {mode === "all" && (
+        <div className="vc-card p-5 mb-4 sm:mb-5 flex items-center justify-between gap-4 flex-wrap" style={{ background: "var(--ink)" }}>
+          <div className="flex items-center gap-3">
+            <Compass size={24} style={{ color: "var(--turmeric)" }} aria-hidden="true" />
+            <div>
+              <div className="font-semibold" style={{ color: "#fff" }}>Vastu Advisor</div>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.65)" }}>Check your own land or home's Vastu — free, no listing required.</p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link to="/vastu/land" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.25)", color: "#fff" }}>
+              <Mountain size={13} aria-hidden="true" /> Land
+            </Link>
+            <Link to="/vastu/home" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.25)", color: "#fff" }}>
+              <HomeIcon size={13} aria-hidden="true" /> Home
+            </Link>
+          </div>
         </div>
       )}
 

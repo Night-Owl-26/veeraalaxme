@@ -1,18 +1,21 @@
 import { NavLink } from "react-router-dom";
-import { Home as HomeIcon, Scale, Bookmark, MessageCircle, PlusSquare } from "lucide-react";
+import { Home as HomeIcon, Bookmark, MessageCircle, PlusSquare, Compass } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 // A native-app-style bottom tab bar for small screens — the primary nav
 // pattern people already know from Instagram/Zillow/99acres mobile apps,
 // so property browsing feels natural on a phone instead of like a shrunk
 // desktop site. Hidden at md+ where the header's nav row takes over.
-export default function MobileTabBar({ compareCount = 0, savedCount = 0 }) {
+// Compare isn't pinned here (still reachable via desktop nav and property
+// cards) to make room for Vastu, which the product spec treats as a primary
+// nav destination.
+export default function MobileTabBar({ savedCount = 0 }) {
   const { user } = useAuth();
   if (!user) return null;
 
   const items = [
     { to: "/", label: "Feed", icon: HomeIcon, end: true },
-    { to: "/compare", label: "Compare", icon: Scale, badge: compareCount },
+    { to: "/vastu", label: "Vastu", icon: Compass },
     ...(user.role === "SELLER" ? [{ to: "/post", label: "Post", icon: PlusSquare, isAction: true }] : []),
     { to: "/saved", label: "Saved", icon: Bookmark, badge: savedCount },
     { to: "/chat", label: "Chat", icon: MessageCircle },

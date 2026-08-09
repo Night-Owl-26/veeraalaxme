@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  Search, Bell, ChevronDown, Check, Calculator, Home as HomeIcon,
-  Bookmark, Scale, MessageCircle, PlusSquare, Building2, ShieldCheck,
+  Search, Bell, ChevronDown, Calculator, Home as HomeIcon,
+  Bookmark, Scale, MessageCircle, PlusSquare, Building2, ShieldCheck, Compass,
 } from "lucide-react";
 import CompassLogo from "../property/CompassLogo";
 import NotificationsPanel from "./NotificationsPanel";
@@ -11,6 +11,7 @@ import { initials } from "../../utils/format";
 
 const NAV_BASE = [
   { to: "/", label: "Feed", icon: HomeIcon, end: true },
+  { to: "/vastu", label: "Vastu", icon: Compass },
   { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/compare", label: "Compare", icon: Scale, key: "compare" },
   { to: "/chat", label: "Chat", icon: MessageCircle },
@@ -57,6 +58,11 @@ export default function Header({ compareCount = 0, savedCount = 0, onOpenEmi }) 
         </form>
 
         <div className="flex items-center gap-1 sm:gap-1.5">
+          {!user && (
+            <Link to="/vastu" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.2)", color: "#fff" }}>
+              <Compass size={15} aria-hidden="true" /> <span className="hidden sm:inline">Vastu</span>
+            </Link>
+          )}
           {user && (
             <button onClick={onOpenEmi} className="hidden sm:flex vc-btn-ghost items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.2)", color: "#fff" }}>
               <Calculator size={15} aria-hidden="true" /> EMI

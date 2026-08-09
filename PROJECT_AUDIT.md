@@ -270,3 +270,94 @@ property status enum were left as-is. Completed:
   real Postgres.
 
 **Next: Phase 3, the Vastu rule engine** — the actual product differentiator.
+
+## Phase 3 — completed (2026-08-09)
+
+Scope, per your "focused core" direction: real rule engine, Land + Home Vastu
+advisor forms, the 8-direction compass, recommendations, and grounded AI
+explanation. No PDF report export or personal Vastu profile in this pass.
+
+**Database**
+- Extended the `Facing` enum from 4 to all 8 directions (N/NE/E/SE/S/SW/W/NW)
+  — the single biggest specific gap this audit originally flagged. Existing
+  `Property.facing`/`kitchenDir`/`entranceDir` values are unaffected (additive
+  enum change); the property-post form's direction picker now offers all 8.
+- New `VastuRule` table — the rule engine's actual source of truth. Every row
+  is one field/value check (category, optional propertyType, field,
+  matchValues, severity, scoreWeight, recommendation, explanation, tradition,
+  source, confidence). Seeded with 64 real rules across facing, entrance,
+  plot shape, slope, water/septic, kitchen, bedroom, pooja, staircase, and
+  bathroom — see `backend/prisma/vastuRulesSeed.js` for the content and the
+  sourcing note (traditional, widely-published Vastu Shastra guidance;
+  low-confidence flagged where traditions disagree).
+- New `VastuAnalysis` table — every analysis run (anonymous or logged-in) is
+  persisted with its full input, computed scores, and fired rules, so a
+  result is reproducible and revisitable later, not just a one-off response.
+
+**Backend**
+- `backend/src/services/vastuEngine.js` — the deterministic scorer. Pure
+  function, zero I/O, zero AI dependency: same rules + same input always
+  produces the same score. 8 unit tests via Node's built-in test runner
+  (`npm test`), covering determinism, category scoping ("only score what has
+  data"), LAND/HOME isolation, clamping, and inactive-rule exclusion.
+  A category only appears in the result if the caller actually supplied a
+  relevant field — no invented scores for missing data, per your spec.
+- `POST /api/vastu/land/analyze`, `POST /api/vastu/home/analyze` — run the
+  engine, persist, return score + breakdown + positive/concern findings.
+  Work for anonymous visitors (optionalAuth) and free of any AI dependency.
+- `POST /api/vastu/analyses/:id/explain` — separate, rate-limited (aiLimiter),
+  opt-in endpoint that asks Claude to narrate an *already-computed* result in
+  plain English. The prompt hands Claude the exact score and fired rules and
+  explicitly forbids inventing new claims or a different score — AI explains,
+  never decides, matching your spec's §76 architecture rule.
+- `aiService.generateVastuExplanation()` — the grounded-explanation prompt.
+- `GET /api/vastu/analyses` (mine), `GET /api/vastu/analyses/:id` — list/
+  revisit past analyses ("Vastu Reports" lite).
+
+**Frontend**
+- `VastuCompass.jsx` — interactive 8-direction compass (+ optional center
+  point for staircase/bathroom/water/septic, matching traditional Brahmasthan
+  guidance). Real focusable buttons laid over a decorative SVG ring/needle,
+  not clickable SVG wedges — accessible, 44px+ touch targets.
+- `/vastu` (landing), `/vastu/land`, `/vastu/home` (forms — a chip row lets
+  one shared compass drive several direction fields, so the page doesn't need
+  eight full-size compasses), `/vastu/reports` + `/vastu/reports/:id`
+  (logged-in users' saved analyses).
+- Added to primary navigation: desktop header nav, mobile bottom tab bar
+  (swapped in for the Compare tab, which stays reachable via desktop nav and
+  property cards — six bottom-tab items was too many), and a header-level
+  link for logged-out visitors. Added a Vastu Advisor promo card to the
+  homepage feed between the search bar and listings, matching your spec's
+  described homepage flow.
+- Verified in a real headless-Chromium session (Playwright driving system
+  Chromium, since neither `chromium-cli` nor a browser MCP was available
+  here): homepage promo renders, both forms' compasses are visually correct
+  (no overlap, needle points the right direction, chip-switching retargets
+  the compass correctly), submission returns real scores (tested 82 and 81)
+  with correct positive/concern categorization, and results persist/reload
+  correctly from `/vastu/reports/:id`. The only console messages were
+  expected, pre-existing ones (anonymous session-resume 403s, a missing
+  favicon 404) — nothing caused by this feature.
+
+**Also fixed while in the area:**
+- Frontend had no working lint setup at all (`npm run lint` invoked a system
+  ESLint 6.4 with no config and errored immediately) — added a standard flat
+  ESLint config for this Vite+React stack. Found and left as pre-existing,
+  harmless warnings: a few unused `React` imports (safe under the new JSX
+  transform) and fast-refresh-export warnings on files that mix a component
+  with exported constants (existing pattern, e.g. `FilterPanel.jsx`).
+- `property.validators.js`'s facing enum only accepted N/E/S/W — extended to
+  all 8 directions to match the schema change above; sellers posting a
+  property can now pick NE/SE/SW/NW.
+
+**Known limitations carried forward, not addressed this pass:**
+- Property-listing creation still uses the old 4-line `computeVastuScore`
+  heuristic in `property.controller.js`, not the new rule engine — it still
+  works correctly for all 8 directions (safe fallback to a neutral score for
+  the 4 new ones), but isn't as rich as the standalone Land/Home Vastu tool.
+  Migrating it to the rule engine is a reasonable fast-follow, not done here
+  to keep this pass bounded to what was scoped.
+- No "Ask Vastu" conversational assistant, no PDF/report export, no personal
+  Vastu preference profile — explicitly out of scope for "focused core."
+- Frontend has no test suite (backend now has one, for the engine). Adding
+  component/integration tests for the new pages is a reasonable next step.

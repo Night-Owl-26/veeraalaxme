@@ -1,6 +1,6 @@
 const { z } = require("zod");
 
-const facingEnum = z.enum(["N", "E", "S", "W"]);
+const facingEnum = z.enum(["N", "NE", "E", "SE", "S", "SW", "W", "NW"]);
 
 const createPropertySchema = z.object({
   title: z.string().min(5).max(140),
