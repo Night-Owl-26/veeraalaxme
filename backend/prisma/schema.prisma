@@ -1,0 +1,327 @@
+// VasthuConnect — production database schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SOLD
+}
+
+enum Facing {
+  N
+  E
+  S
+  W
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  MESSAGE
+  APPROVAL
+  REJECTION
+  SYSTEM
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String    @unique
+  name          String
+  email         String?   @unique
+  passwordHash  String?
+  role          Role      @default(BUYER)
+  phoneVerified Boolean   @default(false)
+  isVerifiedSeller Boolean @default(false)
+  isBlacklisted Boolean   @default(false)
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  properties       Property[]        @relation("SellerProperties")
+  comments         Comment[]
+  likes            Like[]
+  savedProperties  SavedProperty[]
+  sentMessages     ChatMessage[]     @relation("SentMessages")
+  chatThreadsBuyer ChatThread[]      @relation("BuyerThreads")
+  chatThreadsSeller ChatThread[]     @relation("SellerThreads")
+  notifications    Notification[]
+  reportsFiled     Report[]          @relation("ReportsFiled")
+  otpCodes         OtpCode[]
+  refreshTokens    RefreshToken[]
+  payments         Payment[]
+  auditLogs        AuditLog[]
+
+  @@index([role])
+  @@index([phone])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String?
+  phone     String
+  codeHash  String
+  purpose   String   // "login" | "register" | "reset"
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([phone, purpose])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Property {
+  id               String         @id @default(uuid())
+  sellerId         String
+  title            String
+  type             String
+  price            Int
+  priceUnit        String?
+  negotiable       Boolean        @default(true)
+  city             String
+  locality         String
+  areaLabel        String
+  bedrooms         Int?
+  bathrooms        Int?
+
+  facing           Facing
+  kitchenDir       Facing
+  entranceDir      Facing
+  poojaRoom        Boolean        @default(false)
+  vastuScore       Int
+
+  water            Boolean        @default(false)
+  electricity      Boolean        @default(false)
+  compoundWall     Boolean        @default(false)
+  road             String?
+
+  latitude         Float?
+  longitude        Float?
+
+  description      String         @db.Text
+  surveyNumberEnc  String?        // encrypted at rest, masked on read
+  ownership        String?
+  loanAvailable    Boolean        @default(false)
+  documentsVerified Boolean       @default(false)
+
+  status           PropertyStatus @default(PENDING)
+  rejectionReason  String?
+  possibleDuplicateOf String?
+  spamScore        Int            @default(0)
+
+  likesCount       Int            @default(0)
+  viewCount        Int            @default(0)
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  seller           User           @relation("SellerProperties", fields: [sellerId], references: [id])
+  images           PropertyImage[]
+  documents        PropertyDocument[]
+  comments         Comment[]
+  likes            Like[]
+  savedBy          SavedProperty[]
+  chatThreads      ChatThread[]
+  reports          Report[]
+
+  @@index([status])
+  @@index([type])
+  @@index([city])
+  @@index([sellerId])
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String
+  url        String
+  pHash      String   // perceptual hash, used for duplicate-image detection
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@index([pHash])
+}
+
+model PropertyDocument {
+  id         String   @id @default(uuid())
+  propertyId String
+  url        String
+  label      String
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  propertyId String
+  userId     String
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([propertyId])
+}
+
+model Like {
+  id         String   @id @default(uuid())
+  propertyId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([propertyId, userId])
+}
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  propertyId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([propertyId, userId])
+}
+
+model ChatThread {
+  id         String   @id @default(uuid())
+  propertyId String?
+  buyerId    String
+  sellerId   String
+  createdAt  DateTime @default(now())
+
+  property   Property?     @relation(fields: [propertyId], references: [id])
+  buyer      User          @relation("BuyerThreads", fields: [buyerId], references: [id])
+  seller     User          @relation("SellerThreads", fields: [sellerId], references: [id])
+  messages   ChatMessage[]
+
+  @@unique([propertyId, buyerId, sellerId])
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model ChatMessage {
+  id        String     @id @default(uuid())
+  threadId  String
+  senderId  String
+  text      String     @db.Text
+  readAt    DateTime?
+  createdAt DateTime   @default(now())
+
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User       @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([threadId])
+}
+
+model Notification {
+  id        String            @id @default(uuid())
+  userId    String
+  type      NotificationType
+  message   String
+  link      String?
+  read      Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  propertyId String
+  reporterId String
+  reason     String
+  details    String?      @db.Text
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+
+  property   Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reporter   User         @relation("ReportsFiled", fields: [reporterId], references: [id])
+
+  @@index([status])
+  @@index([propertyId])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        String
+  propertyId    String?
+  amount        Int
+  currency      String        @default("INR")
+  purpose       String        // "listing_promotion" | "subscription"
+  status        PaymentStatus @default(CREATED)
+  providerOrderId String?
+  providerPaymentId String?
+  createdAt     DateTime      @default(now())
+
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String   // e.g. "property.approve", "property.reject", "user.blacklist", "user.verify_seller"
+  targetType String   // e.g. "Property", "User"
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor      User     @relation(fields: [actorId], references: [id])
+
+  @@index([targetType, targetId])
+  @@index([actorId])
+  @@index([createdAt])
+}

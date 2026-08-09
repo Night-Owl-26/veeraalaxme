@@ -1,0 +1,63 @@
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { authApi } from "../api/auth";
+import { setAccessToken, setUnauthorizedHandler } from "../api/client";
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const forceLogout = useCallback(() => {
+    setAccessToken(null);
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(forceLogout);
+  }, [forceLogout]);
+
+  // On first load, try to silently resume a session using the httpOnly
+  // refresh cookie (if the browser still has one from a previous visit).
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await authApi.refresh();
+        setAccessToken(data.accessToken);
+        setUser(data.user);
+      } catch {
+        // no valid session — that's fine, user just isn't logged in
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const requestOtp = useCallback(async (phone, purpose, extra = {}) => {
+    return authApi.requestOtp({ phone, purpose, ...extra });
+  }, []);
+
+  const verifyOtp = useCallback(async (phone, code, purpose, extra = {}) => {
+    const data = await authApi.verifyOtp({ phone, code, purpose, ...extra });
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      forceLogout();
+    }
+  }, [forceLogout]);
+
+  const value = { user, setUser, loading, requestOtp, verifyOtp, logout, isAuthenticated: !!user };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}

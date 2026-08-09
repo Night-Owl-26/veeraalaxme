@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #1b1f2e;
+  --ink-soft: #42485c;
+  --ink-muted: #7a8092;
+  --surface: #faf8f3;
+  --card: #ffffff;
+  --line: #e7e1d2;
+  --brick: #b6472f;
+  --brick-dark: #8f3620;
+  --brick-tint: #f5e5df;
+  --turmeric: #c8933a;
+  --turmeric-tint: #f6ecd8;
+  --banyan: #2f5f4e;
+  --banyan-tint: #e3ede8;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.f-display {
+  font-family: "Fraunces", serif;
+}
+.f-mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.vc-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.vc-eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--brick);
+  font-weight: 600;
+}
+.vc-btn-primary {
+  background: var(--brick);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.vc-btn-primary:hover {
+  background: var(--brick-dark);
+}
+.vc-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.vc-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  transition: border-color 0.15s, background 0.15s;
+}
+.vc-btn-ghost:hover {
+  border-color: var(--brick);
+  background: var(--brick-tint);
+}
+.vc-tab {
+  border-bottom: 2px solid transparent;
+  color: var(--ink-muted);
+  font-weight: 600;
+  font-size: 14px;
+}
+.vc-tab.active {
+  color: var(--ink);
+  border-color: var(--brick);
+}
+.vc-navlink {
+  color: var(--ink-muted);
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.vc-navlink:hover {
+  background: var(--brick-tint);
+  color: var(--brick-dark);
+}
+.vc-navlink.active {
+  background: var(--ink);
+  color: #fff;
+}
+.vc-input {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  padding: 9px 12px;
+  font-size: 14px;
+  width: 100%;
+  color: var(--ink);
+}
+.vc-input:focus {
+  outline: 2px solid var(--brick);
+  outline-offset: 1px;
+}
+.vc-input.invalid {
+  border-color: var(--brick);
+  outline-color: var(--brick);
+}
+.vc-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: #fff;
+  white-space: nowrap;
+}
+.vc-chip.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* Honeypot field: visually and programmatically hidden from sighted and
+   screen-reader users, but present in the DOM/tab order for naive bots that
+   fill every field blindly. */
+.vc-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.vc-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 0 0 8px 0;
+  z-index: 100;
+}
+.vc-skip-link:focus {
+  left: 0;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--brick);
+  outline-offset: 2px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+a {
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+button:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prevents iOS Safari from zooming in on input focus (inputs under 16px
+   trigger an auto-zoom that feels broken on a "modern" mobile UI). */
+@media (max-width: 640px) {
+  .vc-input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
