@@ -1,0 +1,58 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Render requires this file at the repo root for Blueprint deploys. This repo
+# is a monorepo (frontend/ + backend/), so the actual build context is
+# pointed at backend/ via rootDir below — everything else is identical to
+# backend/render.yaml, which is kept in sync as the source of truth for local
+# reference. Update both files together if this config ever changes.
+services:
+  - type: web
+    name: vasthuconnect-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vasthuconnect-db
+          property: connectionString
+      - key: CLIENT_ORIGIN
+        sync: false   # set in the Render dashboard to https://veeralaxmevastu.com (this repo can't set it — Render env vars marked sync:false are dashboard-only)
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FIELD_ENCRYPTION_KEY
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SMS_PROVIDER
+        value: console
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: EMAIL_FROM
+        value: "VeeraaLaxme Vastu <noreply@veeralaxmevastu.com>"
+      - key: SMTP_HOST
+        value: smtp.hostinger.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        value: noreply@veeralaxmevastu.com
+      - key: SMTP_PASS
+        sync: false   # set in the Render dashboard — the Hostinger mailbox password, never committed
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+databases:
+  - name: vasthuconnect-db
+    plan: free
