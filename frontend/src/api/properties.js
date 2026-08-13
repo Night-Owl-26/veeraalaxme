@@ -3,7 +3,7 @@ import { api } from "./client";
 function toQuery(params) {
   const usp = new URLSearchParams();
   Object.entries(params || {}).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0)) return;
+    if (v === undefined || v === null || v === "" || v === false || (Array.isArray(v) && v.length === 0)) return;
     usp.set(k, Array.isArray(v) ? v.join(",") : String(v));
   });
   const s = usp.toString();

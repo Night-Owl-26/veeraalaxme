@@ -5,6 +5,8 @@ import { z } from "zod";
 // this is a UX convenience, never the actual security boundary.
 export const phoneSchema = z.string().regex(/^\+?[0-9]{10,15}$/, "Enter a valid phone number");
 export const otpSchema = z.string().length(6, "Enter the 6-digit code");
+export const emailSchema = z.string().email("Enter a valid email address");
+export const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
 
 export const propertyDraftSchema = z.object({
   title: z.string().min(5, "Title should be at least 5 characters").max(140),

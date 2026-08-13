@@ -3,8 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="VasthuConnect — verified property listings with Vastu-aware search." />
-    <title>VasthuConnect</title>
+    <meta name="theme-color" content="#1b1f2e" />
+    <title>VeeraaLaxme Vastu — Buy & Sell Land and Property in Chennai, Vastu-Checked</title>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      description/robots/canonical/OG/Twitter tags are deliberately NOT
+      hardcoded here — every route renders <Seo> (src/components/common/Seo.jsx),
+      which sets them per-page via react-helmet-async. Duplicating them here
+      as static tags previously caused the static and per-page versions to
+      both exist in the DOM at once (react-helmet-async only reconciles tags
+      across its own renders, not hand-written ones), which meant page-specific
+      descriptions never actually took effect and noindex pages risked also
+      carrying a stale "index, follow" tag. Known tradeoff: a crawler/link-
+      unfurler that does not execute JavaScript will see only the <title>
+      above until Seo.jsx renders client-side.
+    -->
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "RealEstateAgent",
+        "name": "VeeraaLaxme Vastu",
+        "url": "https://veeralaxmevastu.com",
+        "description": "Buy and sell verified land, plots, apartments and villas in Chennai with Vastu-checked listings.",
+        "areaServed": { "@type": "City", "name": "Chennai" }
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>

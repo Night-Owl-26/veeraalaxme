@@ -8,6 +8,7 @@ import ThreadList from "../components/chat/ThreadList";
 import MessageThread from "../components/chat/MessageThread";
 import EmptyState from "../components/common/EmptyState";
 import Spinner from "../components/common/Spinner";
+import Seo from "../components/common/Seo";
 
 export default function ChatPage() {
   const { threadId } = useParams();
@@ -65,6 +66,7 @@ export default function ChatPage() {
 
   return (
     <div id="main-content" className="vc-card overflow-hidden flex" style={{ height: "calc(100vh - 220px)", minHeight: 420 }}>
+      <Seo title="Chat" noindex />
       <div className={`w-full sm:w-64 shrink-0 border-r overflow-y-auto ${threadId ? "hidden sm:block" : "block"}`} style={{ borderColor: "var(--line)" }}>
         <ThreadList threads={threads} activeId={threadId} onSelect={(id) => navigate(`/chat/${id}`)} />
       </div>
@@ -78,7 +80,13 @@ export default function ChatPage() {
         </div>
       ) : (
         <div className="hidden sm:flex flex-1 items-center justify-center">
-          <p className="text-sm" style={{ color: "var(--ink-muted)" }}>Select a conversation</p>
+          <div className="text-center px-6">
+            <span className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "var(--surface)" }}>
+              <MessageCircle size={26} style={{ color: "var(--ink-muted)" }} aria-hidden="true" />
+            </span>
+            <p className="font-semibold">Select a conversation</p>
+            <p className="text-sm mt-1" style={{ color: "var(--ink-muted)" }}>Pick a thread on the left to see your messages.</p>
+          </div>
         </div>
       )}
     </div>

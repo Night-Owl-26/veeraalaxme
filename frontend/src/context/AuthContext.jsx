@@ -33,12 +33,19 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-  const requestOtp = useCallback(async (phone, purpose, extra = {}) => {
-    return authApi.requestOtp({ phone, purpose, ...extra });
+  const registerRequestOtp = useCallback(async (draft) => {
+    return authApi.registerRequestOtp(draft);
   }, []);
 
-  const verifyOtp = useCallback(async (phone, code, purpose, extra = {}) => {
-    const data = await authApi.verifyOtp({ phone, code, purpose, ...extra });
+  const registerVerifyOtp = useCallback(async (draft, code) => {
+    const data = await authApi.registerVerifyOtp({ ...draft, code });
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  const login = useCallback(async (phone, password) => {
+    const data = await authApi.login({ phone, password });
     setAccessToken(data.accessToken);
     setUser(data.user);
     return data.user;
@@ -52,7 +59,7 @@ export function AuthProvider({ children }) {
     }
   }, [forceLogout]);
 
-  const value = { user, setUser, loading, requestOtp, verifyOtp, logout, isAuthenticated: !!user };
+  const value = { user, setUser, loading, registerRequestOtp, registerVerifyOtp, login, logout, isAuthenticated: !!user };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

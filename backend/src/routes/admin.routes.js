@@ -8,11 +8,12 @@ const { resolveReportSchema } = require("../validators/property.validators");
 
 router.use(requireAuth, requireRole("ADMIN"));
 
-router.get("/properties/pending", ctrl.listPending);
+router.get("/properties/recent", ctrl.listRecentProperties);
 router.patch("/properties/:id/approve", ctrl.approveProperty);
 router.patch("/properties/:id/reject", ctrl.rejectProperty);
 router.patch("/properties/:id/verify-documents", ctrl.verifyDocuments);
 
+router.get("/users", ctrl.listUsers);
 router.patch("/users/:id/blacklist", ctrl.setBlacklist);
 router.patch("/users/:id/verify-seller", ctrl.verifySeller);
 

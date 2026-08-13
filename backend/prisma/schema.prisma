@@ -63,6 +63,7 @@ enum NotificationType {
   MESSAGE
   APPROVAL
   REJECTION
+  NEW_LISTING
   SYSTEM
 }
 
@@ -80,6 +81,7 @@ model User {
   passwordHash  String?
   role          Role      @default(BUYER)
   phoneVerified Boolean   @default(false)
+  emailVerified Boolean   @default(false)
   isVerifiedSeller Boolean @default(false)
   isBlacklisted Boolean   @default(false)
   avatarUrl     String?
@@ -108,16 +110,16 @@ model User {
 model OtpCode {
   id        String   @id @default(uuid())
   userId    String?
-  phone     String
+  email     String
   codeHash  String
-  purpose   String   // "login" | "register" | "reset"
+  purpose   String   // "register" — email verification during signup
   attempts  Int      @default(0)
   expiresAt DateTime
   consumedAt DateTime?
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
 
-  @@index([phone, purpose])
+  @@index([email, purpose])
 }
 
 model RefreshToken {
@@ -134,6 +136,7 @@ model RefreshToken {
 
 model Property {
   id               String         @id @default(uuid())
+  slug             String         @unique // readable URL path, e.g. "3bhk-villa-t-nagar-chennai" — id stays the real key everywhere internally
   sellerId         String
   title            String
   type             String
@@ -159,6 +162,7 @@ model Property {
 
   latitude         Float?
   longitude        Float?
+  nearby           Json?          // { school, hospital, bus, railway, airport } distances in km, computed from OSM Overpass data
 
   description      String         @db.Text
   surveyNumberEnc  String?        // encrypted at rest, masked on read
@@ -191,6 +195,10 @@ model Property {
   @@index([type])
   @@index([city])
   @@index([sellerId])
+  @@index([createdAt])
+  @@index([vastuScore])
+  @@index([price])
+  @@index([status, createdAt])
 }
 
 model PropertyImage {

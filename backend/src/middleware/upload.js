@@ -1,5 +1,6 @@
 const multer = require("multer");
 const path = require("path");
+const { ApiError } = require("../utils/apiResponse");
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_DOC_MIME = new Set(["application/pdf", "image/jpeg", "image/png"]);
@@ -14,7 +15,7 @@ const imageUpload = multer({
   storage,
   limits: { fileSize: MAX_IMAGE_BYTES, files: 20 },
   fileFilter: (req, file, cb) => {
-    if (!ALLOWED_MIME.has(file.mimetype)) return cb(new Error("Only JPEG, PNG or WEBP images are allowed"));
+    if (!ALLOWED_MIME.has(file.mimetype)) return cb(new ApiError(422, "Only JPEG, PNG or WEBP images are allowed"));
     cb(null, true);
   },
 });
@@ -23,7 +24,7 @@ const docUpload = multer({
   storage,
   limits: { fileSize: MAX_DOC_BYTES, files: 5 },
   fileFilter: (req, file, cb) => {
-    if (!ALLOWED_DOC_MIME.has(file.mimetype)) return cb(new Error("Only PDF, JPEG or PNG documents are allowed"));
+    if (!ALLOWED_DOC_MIME.has(file.mimetype)) return cb(new ApiError(422, "Only PDF, JPEG or PNG documents are allowed"));
     cb(null, true);
   },
 });

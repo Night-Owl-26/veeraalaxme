@@ -1,4 +1,5 @@
 const { verifyAccessToken } = require("../utils/jwt");
+const prisma = require("../config/db");
 
 // Every socket connection must present the same JWT access token used for
 // REST calls — sockets are not a separate, weaker auth path. Each user joins
@@ -20,7 +21,15 @@ function initChatSocket(io) {
   io.on("connection", (socket) => {
     socket.join(`user:${socket.userId}`);
 
-    socket.on("chat:typing", ({ threadId, toUserId }) => {
+    socket.on("chat:typing", async ({ threadId, toUserId }) => {
+      if (!threadId || !toUserId) return;
+      // Confirm the sender is actually a participant of this thread, and that
+      // toUserId is the OTHER participant — otherwise any authenticated socket
+      // could name an arbitrary threadId/toUserId and get it relayed as-is.
+      const thread = await prisma.chatThread.findUnique({ where: { id: threadId }, select: { buyerId: true, sellerId: true } });
+      if (!thread) return;
+      const participants = [thread.buyerId, thread.sellerId];
+      if (!participants.includes(socket.userId) || !participants.includes(toUserId)) return;
       io.to(`user:${toUserId}`).emit("chat:typing", { threadId, fromUserId: socket.userId });
     });
 

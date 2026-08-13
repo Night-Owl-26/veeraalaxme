@@ -1,4 +1,4 @@
-# VasthuConnect — full-stack
+# VeeraaLaxme Vastu — full-stack
 
 A real backend + a modularized, responsive React frontend for the social
 real-estate platform spec. Replaces the earlier single-file prototype.

@@ -10,5 +10,7 @@ router.use("/admin", require("./admin.routes"));
 router.use("/ai", require("./ai.routes"));
 router.use("/payments", require("./payment.routes"));
 router.use("/vastu", require("./vastu.routes"));
+router.use("/geo", require("./geo.routes"));
+router.use("/contact", require("./contact.routes"));
 
 module.exports = router;

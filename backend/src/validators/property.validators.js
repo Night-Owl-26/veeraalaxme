@@ -2,6 +2,16 @@ const { z } = require("zod");
 
 const facingEnum = z.enum(["N", "NE", "E", "SE", "S", "SW", "W", "NW"]);
 
+// z.coerce.boolean() runs plain JS `Boolean(value)` under the hood, so the
+// query STRING "false" — which is exactly what a browser sends for a
+// checkbox that's off — coerces to `true` (any non-empty string is truthy).
+// This parses "true"/"false" text explicitly instead.
+const booleanQueryParam = z.preprocess((v) => {
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return v;
+}, z.boolean().optional());
+
 const createPropertySchema = z.object({
   title: z.string().min(5).max(140),
   type: z.string().min(2).max(60),
@@ -47,8 +57,9 @@ const searchQuerySchema = z.object({
   minPrice: z.coerce.number().int().min(0).optional(),
   maxPrice: z.coerce.number().int().min(0).optional(),
   minVastu: z.coerce.number().int().min(0).max(100).optional(),
-  verifiedOnly: z.coerce.boolean().optional(),
+  verifiedOnly: booleanQueryParam,
   bedrooms: z.coerce.number().int().min(0).optional(),
+  excludeId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(12),
   sort: z.enum(["newest", "price_asc", "price_desc", "vastu_desc"]).default("newest"),

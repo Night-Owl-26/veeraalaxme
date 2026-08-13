@@ -3,8 +3,10 @@
 // the frontend has real data to render against on first run.
 const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
+const DEV_PASSWORD = "Passw0rd!";
 
 function encryptField(plaintext) {
   const key = Buffer.from(process.env.FIELD_ENCRYPTION_KEY || "0".repeat(64), "hex");
@@ -16,22 +18,33 @@ function encryptField(plaintext) {
 }
 
 async function main() {
+  const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
+
   const admin = await prisma.user.upsert({
     where: { phone: "+919999900000" },
     update: {},
-    create: { phone: "+919999900000", name: "Admin", role: "ADMIN", phoneVerified: true },
+    create: {
+      phone: "+919999900000", name: "Admin", role: "ADMIN", phoneVerified: true,
+      email: "admin@veeralaxmevastu.com", emailVerified: true, passwordHash,
+    },
   });
 
   const seller = await prisma.user.upsert({
     where: { phone: "+919876543210" },
     update: {},
-    create: { phone: "+919876543210", name: "Karthik Subramanian", role: "SELLER", phoneVerified: true, isVerifiedSeller: true },
+    create: {
+      phone: "+919876543210", name: "Karthik Subramanian", role: "SELLER", phoneVerified: true, isVerifiedSeller: true,
+      email: "seller@veeralaxmevastu.com", emailVerified: true, passwordHash,
+    },
   });
 
   const buyer = await prisma.user.upsert({
     where: { phone: "+919000011223" },
     update: {},
-    create: { phone: "+919000011223", name: "Divya Raman", role: "BUYER", phoneVerified: true },
+    create: {
+      phone: "+919000011223", name: "Divya Raman", role: "BUYER", phoneVerified: true,
+      email: "buyer@veeralaxmevastu.com", emailVerified: true, passwordHash,
+    },
   });
 
   const listings = [
@@ -65,7 +78,10 @@ async function main() {
     });
   }
 
-  console.log("Seeded:", { admin: admin.phone, seller: seller.phone, buyer: buyer.phone, listings: listings.length });
+  console.log("Seeded:", {
+    admin: admin.phone, seller: seller.phone, buyer: buyer.phone, listings: listings.length,
+    devPassword: DEV_PASSWORD,
+  });
 }
 
 main()

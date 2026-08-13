@@ -15,7 +15,12 @@ export function usePropertyActions() {
     if (!user) { showToast("Log in to like listings"); return; }
     try {
       const { liked } = await propertiesApi.like(id);
-      applyLocal?.(id, { liked });
+      // Property objects everywhere in this app carry viewer-specific state
+      // as `_liked`/`_saved` (underscore-prefixed, to distinguish it from
+      // core listing fields) — the toggle response itself is just `{ liked }`,
+      // so it has to be remapped here, not spread as-is, or callers patching
+      // `{ ...p, liked }` silently set a field nothing reads.
+      applyLocal?.(id, { _liked: liked });
     } catch (e) {
       showToast(e.message, "error");
     }
@@ -25,7 +30,7 @@ export function usePropertyActions() {
     if (!user) { showToast("Log in to save listings"); return; }
     try {
       const { saved } = await propertiesApi.save(id);
-      applyLocal?.(id, { saved });
+      applyLocal?.(id, { _saved: saved });
       showToast(saved ? "Saved to your list" : "Removed from saved");
     } catch (e) {
       showToast(e.message, "error");

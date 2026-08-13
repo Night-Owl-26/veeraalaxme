@@ -15,7 +15,7 @@ export default function MobileTabBar({ savedCount = 0 }) {
 
   const items = [
     { to: "/", label: "Feed", icon: HomeIcon, end: true },
-    { to: "/vastu", label: "Vastu", icon: Compass },
+    { to: "/vastu", label: "Vastu", icon: Compass }, // links to the human-consultant contact page
     ...(user.role === "SELLER" ? [{ to: "/post", label: "Post", icon: PlusSquare, isAction: true }] : []),
     { to: "/saved", label: "Saved", icon: Bookmark, badge: savedCount },
     { to: "/chat", label: "Chat", icon: MessageCircle },

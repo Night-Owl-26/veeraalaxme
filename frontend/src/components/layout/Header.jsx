@@ -11,7 +11,7 @@ import { initials } from "../../utils/format";
 
 const NAV_BASE = [
   { to: "/", label: "Feed", icon: HomeIcon, end: true },
-  { to: "/vastu", label: "Vastu", icon: Compass },
+  { to: "/vastu", label: "Vastu Check", icon: Compass },
   { to: "/saved", label: "Saved", icon: Bookmark },
   { to: "/compare", label: "Compare", icon: Scale, key: "compare" },
   { to: "/chat", label: "Chat", icon: MessageCircle },
@@ -42,7 +42,7 @@ export default function Header({ compareCount = 0, savedCount = 0, onOpenEmi }) 
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <CompassLogo size={26} />
           <span className="f-display text-lg sm:text-xl" style={{ color: "#fff" }}>
-            Vasthu<span style={{ color: "var(--turmeric)", fontStyle: "italic" }}>Connect</span>
+            VeeraaLaxme<span style={{ color: "var(--turmeric)", fontStyle: "italic" }}> Vastu</span>
           </span>
         </Link>
 

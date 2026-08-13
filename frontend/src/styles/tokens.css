@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --ink: #1b1f2e;
-  --ink-soft: #42485c;
-  --ink-muted: #7a8092;
-  --surface: #faf8f3;
+  --ink: #14171f;
+  --ink-soft: #3d4354;
+  --ink-muted: #757c8f;
+  --surface: #f6f5f0;
   --card: #ffffff;
-  --line: #e7e1d2;
-  --brick: #b6472f;
-  --brick-dark: #8f3620;
-  --brick-tint: #f5e5df;
-  --turmeric: #c8933a;
-  --turmeric-tint: #f6ecd8;
-  --banyan: #2f5f4e;
-  --banyan-tint: #e3ede8;
+  --line: #e4dfd2;
+  --brick: #d6502f;
+  --brick-dark: #ab3c20;
+  --brick-tint: #fbe6dd;
+  --turmeric: #d99a2b;
+  --turmeric-tint: #f9edd6;
+  --banyan: #1c7a5a;
+  --banyan-tint: #dcf0e7;
 }
 
 html,
@@ -40,7 +40,17 @@ body {
 .vc-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(20, 23, 31, 0.05), 0 1px 2px rgba(20, 23, 31, 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.vc-card-interactive {
+  cursor: pointer;
+}
+.vc-card-interactive:hover {
+  box-shadow: 0 20px 40px -16px rgba(20, 23, 31, 0.16), 0 6px 12px -4px rgba(20, 23, 31, 0.1);
+  transform: translateY(-3px);
+  border-color: rgba(214, 80, 47, 0.25);
 }
 .vc-eyebrow {
   font-family: "IBM Plex Mono", monospace;
@@ -53,12 +63,14 @@ body {
 .vc-btn-primary {
   background: var(--brick);
   color: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 600;
-  transition: background 0.15s;
+  box-shadow: 0 1px 2px rgba(214, 80, 47, 0.18);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .vc-btn-primary:hover {
   background: var(--brick-dark);
+  box-shadow: 0 4px 14px -2px rgba(214, 80, 47, 0.4);
 }
 .vc-btn-primary:disabled {
   opacity: 0.55;
@@ -67,7 +79,7 @@ body {
 .vc-btn-ghost {
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--ink-soft);
   transition: border-color 0.15s, background 0.15s;
 }
@@ -101,20 +113,28 @@ body {
 }
 .vc-input {
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 12px;
   background: #fff;
   padding: 9px 12px;
   font-size: 14px;
   width: 100%;
   color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .vc-input:focus {
-  outline: 2px solid var(--brick);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--brick);
+  box-shadow: 0 0 0 3px rgba(214, 80, 47, 0.14);
 }
 .vc-input.invalid {
   border-color: var(--brick);
   outline-color: var(--brick);
+}
+/* The plain padding shorthand above ties with Tailwind's pl-9 utility on
+   specificity, and wins on source order — this two-class rule outranks
+   both so search-icon-prefixed inputs actually get the left padding. */
+.vc-input.pl-9 {
+  padding-left: 2.25rem;
 }
 .vc-chip {
   border: 1px solid var(--line);

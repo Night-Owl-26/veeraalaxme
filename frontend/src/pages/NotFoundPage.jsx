@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Compass } from "lucide-react";
+import Seo from "../components/common/Seo";
 
 export default function NotFoundPage() {
   return (
     <div className="text-center py-20">
+      <Seo title="Page not found" noindex />
       <Compass size={36} className="mx-auto mb-4" style={{ color: "var(--ink-muted)" }} />
       <h1 className="f-display text-2xl font-semibold mb-2">Page not found</h1>
       <p className="text-sm mb-5" style={{ color: "var(--ink-muted)" }}>The page you're looking for doesn't exist.</p>

@@ -21,8 +21,13 @@ const aiLimiter = rateLimit({ ...baseOptions, max: env.rateLimit.maxAi });
 // General API traffic.
 const generalLimiter = rateLimit({ ...baseOptions, max: env.rateLimit.maxGeneral });
 
+// Geocoding/nearby-places hit free public OSM services (Nominatim/Overpass)
+// with strict shared-fair-use policies — kept tight so one client can't back
+// up the shared request queue for everyone else.
+const geoLimiter = rateLimit({ ...baseOptions, max: env.rateLimit.maxAi });
+
 // Property submissions: a basic spam-protection backstop beyond the honeypot
 // field and duplicate-detection heuristics in fraudService.
 const postPropertyLimiter = rateLimit({ ...baseOptions, windowMs: 60 * 60 * 1000, max: 5 });
 
-module.exports = { authLimiter, aiLimiter, generalLimiter, postPropertyLimiter };
+module.exports = { authLimiter, aiLimiter, generalLimiter, postPropertyLimiter, geoLimiter };

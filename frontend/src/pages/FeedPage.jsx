@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Search, SlidersHorizontal, Compass, Mountain, Home as HomeIcon } from "lucide-react";
+import { Search, SlidersHorizontal, Compass, Phone } from "lucide-react";
 import { propertiesApi } from "../api/properties";
 import PropertyCard from "../components/property/PropertyCard";
 import PropertyCardSkeleton from "../components/property/PropertyCardSkeleton";
@@ -9,6 +9,7 @@ import EmptyState from "../components/common/EmptyState";
 import { useCompare } from "../context/CompareContext";
 import { usePropertyActions } from "../hooks/usePropertyActions";
 import { useDebounce } from "../hooks/useDebounce";
+import Seo, { SITE_NAME } from "../components/common/Seo";
 
 export default function FeedPage({ mode = "all" }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,7 +31,7 @@ export default function FeedPage({ mode = "all" }) {
       prev.map((p) => {
         if (p.id !== id) return p;
         const next = { ...p, ...patch };
-        if ("liked" in patch) next.likes = p.likes + (patch.liked ? 1 : -1);
+        if ("_liked" in patch) next.likes = p.likes + (patch._liked ? 1 : -1);
         return next;
       })
     );
@@ -78,11 +79,32 @@ export default function FeedPage({ mode = "all" }) {
   const heading = mode === "saved" ? "Your saved listings" : mode === "mine" ? "My listings" : "Discover verified properties";
   const sub =
     mode === "saved" ? "Everything you've bookmarked, in one place." :
-    mode === "mine" ? "Listings you've posted, including ones awaiting approval." :
-    "Every listing here has passed phone verification. Green checkmarks mean documents were verified too.";
+    mode === "mine" ? "Listings you've posted — published immediately, visible to everyone." :
+    "Every seller verifies their email to post. Green checkmarks mean documents were verified too.";
 
   return (
     <div id="main-content">
+      {mode === "all" ? (
+        <Seo
+          title="Buy & Sell Land and Property in Chennai, Vastu-Checked"
+          description="Browse verified land, plots, apartments and villas for sale in Chennai. Every VeeraaLaxme Vastu listing carries a Vastu compatibility score, verified seller, and direct chat — search by locality, price, and Vastu facing."
+          path="/"
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: SITE_NAME,
+            url: typeof window !== "undefined" ? window.location.origin : "",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: `${typeof window !== "undefined" ? window.location.origin : ""}/?q={search_term_string}`,
+              "query-input": "required name=search_term_string",
+            },
+          }}
+        />
+      ) : (
+        <Seo title={heading} noindex />
+      )}
+
       <div className="flex items-end justify-between gap-4 mb-4 sm:mb-5 flex-wrap">
         <div>
           <h1 className="f-display text-2xl sm:text-3xl font-semibold">{heading}</h1>
@@ -110,16 +132,13 @@ export default function FeedPage({ mode = "all" }) {
           <div className="flex items-center gap-3">
             <Compass size={24} style={{ color: "var(--turmeric)" }} aria-hidden="true" />
             <div>
-              <div className="font-semibold" style={{ color: "#fff" }}>Vastu Advisor</div>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.65)" }}>Check your own land or home's Vastu — free, no listing required.</p>
+              <div className="font-semibold" style={{ color: "#fff" }}>Vastu Check</div>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,.65)" }}>Talk to our Vastu consultant about your land or home — no listing required.</p>
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Link to="/vastu/land" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.25)", color: "#fff" }}>
-              <Mountain size={13} aria-hidden="true" /> Land
-            </Link>
-            <Link to="/vastu/home" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.25)", color: "#fff" }}>
-              <HomeIcon size={13} aria-hidden="true" /> Home
+            <Link to="/vastu" className="vc-btn-ghost flex items-center gap-1.5 px-3 py-2 text-xs font-semibold" style={{ borderColor: "rgba(255,255,255,.25)", color: "#fff" }}>
+              <Phone size={13} aria-hidden="true" /> Contact
             </Link>
           </div>
         </div>

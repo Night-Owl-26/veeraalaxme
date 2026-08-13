@@ -13,6 +13,14 @@ function errorHandler(err, req, res, next) {
 
   console.error("[unhandled error]", err);
 
+  // Multer's own limits (file too large, too many files) throw a MulterError
+  // that — unlike the fileFilter rejections above — isn't ours to construct
+  // as an ApiError, so it's normalized here instead of falling through to a
+  // raw 500.
+  if (err.name === "MulterError") {
+    return res.status(400).json({ success: false, error: { message: err.message } });
+  }
+
   if (err.code === "P2002") {
     // Prisma unique constraint violation
     return res.status(409).json({ success: false, error: { message: "That record already exists" } });

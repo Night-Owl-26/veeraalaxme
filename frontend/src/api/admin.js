@@ -1,7 +1,8 @@
 import { api } from "./client";
 
 export const adminApi = {
-  listPending: () => api.get("/admin/properties/pending"),
+  listRecent: () => api.get("/admin/properties/recent"),
+  listUsers: () => api.get("/admin/users"),
   approve: (id) => api.patch(`/admin/properties/${id}/approve`),
   reject: (id, reason) => api.patch(`/admin/properties/${id}/reject`, { reason }),
   verifyDocuments: (id) => api.patch(`/admin/properties/${id}/verify-documents`),

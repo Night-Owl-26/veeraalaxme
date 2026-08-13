@@ -1,6 +1,7 @@
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
+const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const path = require("path");
@@ -14,6 +15,11 @@ const app = express();
 // Behind a reverse proxy (nginx, Render, Railway, etc.) in production, so
 // rate limiting and secure cookies read the real client IP/protocol.
 app.set("trust proxy", 1);
+
+// Gzip/brotli-compresses every JSON/text response — API payloads (the
+// property feed especially) shrink substantially, which matters a lot more
+// under concurrent load than it does for a single request.
+app.use(compression());
 
 // Security headers: CSP, HSTS, X-Frame-Options, etc.
 app.use(
@@ -55,6 +61,23 @@ app.use(generalLimiter);
 app.use("/uploads", express.static(path.join(process.cwd(), env.storage.localUploadDir)));
 
 app.get("/health", (req, res) => res.json({ ok: true, env: env.nodeEnv }));
+app.get("/sitemap.xml", require("./controllers/sitemap.controller").getSitemap);
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(
+    [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /admin",
+      "Disallow: /chat",
+      "Disallow: /profile",
+      "Disallow: /compare",
+      "Disallow: /post",
+      "Disallow: /login",
+      "",
+      `Sitemap: ${env.clientOrigin}/sitemap.xml`,
+    ].join("\n")
+  );
+});
 
 app.use("/api", routes);
 

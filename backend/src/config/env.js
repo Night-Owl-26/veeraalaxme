@@ -1,11 +1,16 @@
 require("dotenv").config();
 
 function required(name, fallback = undefined) {
-  const val = process.env[name] ?? fallback;
-  if (val === undefined && process.env.NODE_ENV === "production") {
+  const raw = process.env[name];
+  // Checked against the RAW env var, before the fallback is applied — a dev
+  // fallback used to make `val` non-undefined even when the real variable
+  // was never set, which meant this guard could never fire in production
+  // for any call that passed a fallback (e.g. the JWT secrets below silently
+  // ran on hardcoded, source-visible defaults if unset on a real deploy).
+  if ((raw === undefined || raw === "") && process.env.NODE_ENV === "production") {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-  return val;
+  return raw || fallback;
 }
 
 module.exports = {
@@ -27,7 +32,7 @@ module.exports = {
     maxAttempts: Number(process.env.OTP_MAX_ATTEMPTS || 5),
   },
 
-  fieldEncryptionKey: process.env.FIELD_ENCRYPTION_KEY || "0".repeat(64),
+  fieldEncryptionKey: required("FIELD_ENCRYPTION_KEY", "0".repeat(64)),
 
   sms: {
     provider: process.env.SMS_PROVIDER || "console",
@@ -35,6 +40,21 @@ module.exports = {
       accountSid: process.env.TWILIO_ACCOUNT_SID,
       authToken: process.env.TWILIO_AUTH_TOKEN,
       fromNumber: process.env.TWILIO_FROM_NUMBER,
+    },
+  },
+
+  email: {
+    provider: process.env.EMAIL_PROVIDER || "console",
+    from: process.env.EMAIL_FROM || "VeeraaLaxme Vastu <noreply@veeralaxmevastu.com>",
+    // Where the Contact page form gets delivered — defaults to the same
+    // mailbox OTPs send from, since that's the one confirmed-working inbox;
+    // point this at a dedicated support address once you set one up.
+    contactTo: process.env.CONTACT_EMAIL || process.env.SMTP_USER,
+    smtp: {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   },
 

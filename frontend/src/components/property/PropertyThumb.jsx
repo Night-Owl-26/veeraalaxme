@@ -14,7 +14,7 @@ function gradientFor(id) {
   return `linear-gradient(135deg, ${s[0]}, ${s[1]})`;
 }
 
-export default function PropertyThumb({ property, className = "", height = "h-44" }) {
+export default function PropertyThumb({ property, className = "", height = "h-44", zoomOnHover = false }) {
   const Icon = TYPE_ICON[property.type] || HomeIcon;
   const imageUrl = property.images?.[0]?.url;
   const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/api$/, "");
@@ -22,7 +22,10 @@ export default function PropertyThumb({ property, className = "", height = "h-44
   return (
     <div className={`relative ${height} ${className} flex items-center justify-center overflow-hidden`} style={!imageUrl ? { background: gradientFor(property.id) } : undefined}>
       {imageUrl ? (
-        <img src={`${apiOrigin}${imageUrl}`} alt={property.title} className="w-full h-full object-cover" loading="lazy" />
+        <img
+          src={`${apiOrigin}${imageUrl}`} alt={property.title} loading="lazy"
+          className={`w-full h-full object-cover ${zoomOnHover ? "transition-transform duration-300 group-hover:scale-105" : ""}`}
+        />
       ) : (
         <Icon size={40} color="rgba(255,255,255,.85)" strokeWidth={1.5} aria-hidden="true" />
       )}

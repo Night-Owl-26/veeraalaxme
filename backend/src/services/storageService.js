@@ -79,8 +79,17 @@ async function saveImage(buffer, originalName) {
   return { url: `/uploads/${filename}`, pHash };
 }
 
-async function saveDocument(buffer, originalName, mimetype) {
-  const ext = mimetype === "application/pdf" ? ".pdf" : path.extname(originalName) || ".bin";
+// Extension is looked up from a fixed allowlist keyed on the (server-validated)
+// mimetype — never derived from the client-supplied original filename. A
+// filename is just a string an attacker fully controls; deriving the stored
+// extension from it previously let a file declared "image/jpeg" but named
+// "x.html" get written as "<uuid>.html" and served as text/html by
+// express.static, i.e. attacker-controlled same-origin script execution.
+const DOC_EXTENSION_BY_MIME = { "application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png" };
+
+async function saveDocument(buffer, mimetype) {
+  const ext = DOC_EXTENSION_BY_MIME[mimetype];
+  if (!ext) throw new Error("Unsupported document type");
   const filename = `${crypto.randomUUID()}${ext}`;
 
   if (env.storage.provider === "cloudinary") {

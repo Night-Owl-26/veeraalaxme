@@ -5,12 +5,14 @@ const { notify } = require("../services/notificationService");
 const { recordAudit } = require("../services/auditService");
 const { serializeProperty, PROPERTY_INCLUDE } = require("./property.controller");
 
-// GET /api/admin/properties/pending
-const listPending = asyncHandler(async (req, res) => {
+// GET /api/admin/properties/recent
+// Sellers publish directly (no approval gate), so this surfaces newly posted
+// listings for after-the-fact review/moderation instead of a pending queue.
+const listRecentProperties = asyncHandler(async (req, res) => {
   const items = await prisma.property.findMany({
-    where: { status: "PENDING" },
     include: PROPERTY_INCLUDE,
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
+    take: 20,
   });
   return ok(res, { items: items.map((p) => serializeProperty(p, { includeSurveyNumber: true })) });
 });
@@ -23,7 +25,7 @@ const approveProperty = asyncHandler(async (req, res) => {
   });
   await recordAudit({ actorId: req.user.id, action: "property.approve", targetType: "Property", targetId: property.id });
   await notify(req.app.get("io"), {
-    userId: property.sellerId, type: "APPROVAL", message: `Your listing "${property.title}" was approved and is now live`, link: `/property/${property.id}`,
+    userId: property.sellerId, type: "APPROVAL", message: `Your listing "${property.title}" was approved and is now live`, link: `/property/${property.slug}`,
   });
   return ok(res, { property });
 });
@@ -37,7 +39,7 @@ const rejectProperty = asyncHandler(async (req, res) => {
   });
   await recordAudit({ actorId: req.user.id, action: "property.reject", targetType: "Property", targetId: property.id, metadata: { reason } });
   await notify(req.app.get("io"), {
-    userId: property.sellerId, type: "REJECTION", message: `Your listing "${property.title}" was rejected: ${reason}`, link: `/property/${property.id}`,
+    userId: property.sellerId, type: "REJECTION", message: `Your listing "${property.title}" was rejected: ${reason}`, link: `/property/${property.slug}`,
   });
   return ok(res, { property });
 });
@@ -50,6 +52,30 @@ const verifyDocuments = asyncHandler(async (req, res) => {
   });
   await recordAudit({ actorId: req.user.id, action: "property.verify_documents", targetType: "Property", targetId: property.id });
   return ok(res, { property });
+});
+
+// GET /api/admin/users — full contact directory for admin moderation.
+// Phone/email are ordinarily masked from other users; admins are the one
+// role that legitimately needs them (support, fraud investigation, verifying
+// a seller's identity before granting the "verified" badge).
+const listUsers = asyncHandler(async (req, res) => {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true, name: true, phone: true, email: true, role: true,
+      emailVerified: true, phoneVerified: true, isVerifiedSeller: true, isBlacklisted: true,
+      createdAt: true,
+      _count: { select: { properties: true } },
+    },
+  });
+  return ok(res, {
+    items: users.map((u) => ({
+      id: u.id, name: u.name, phone: u.phone, email: u.email, role: u.role,
+      emailVerified: u.emailVerified, phoneVerified: u.phoneVerified,
+      isVerifiedSeller: u.isVerifiedSeller, isBlacklisted: u.isBlacklisted,
+      createdAt: u.createdAt, listingsCount: u._count.properties,
+    })),
+  });
 });
 
 // PATCH /api/admin/users/:id/blacklist
@@ -86,10 +112,10 @@ const listAuditLogs = asyncHandler(async (req, res) => {
 
 // GET /api/admin/analytics
 const analytics = asyncHandler(async (req, res) => {
-  const [totalListings, pending, approved, rejected, totalUsers, buyers, sellers, verifiedSellers, byType, recentPayments] =
+  const [totalListings, newListings7d, approved, rejected, totalUsers, buyers, sellers, verifiedSellers, byType, recentPayments] =
     await Promise.all([
       prisma.property.count(),
-      prisma.property.count({ where: { status: "PENDING" } }),
+      prisma.property.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
       prisma.property.count({ where: { status: "APPROVED" } }),
       prisma.property.count({ where: { status: "REJECTED" } }),
       prisma.user.count(),
@@ -101,11 +127,11 @@ const analytics = asyncHandler(async (req, res) => {
     ]);
 
   return ok(res, {
-    totalListings, pending, approved, rejected,
+    totalListings, newListings7d, approved, rejected,
     totalUsers, buyers, sellers, verifiedSellers,
     byType: byType.map((t) => ({ type: t.type, count: t._count.type })),
     revenueLast30Days: recentPayments._sum.amount || 0,
   });
 });
 
-module.exports = { listPending, approveProperty, rejectProperty, verifyDocuments, setBlacklist, verifySeller, analytics, listAuditLogs };
+module.exports = { listRecentProperties, approveProperty, rejectProperty, verifyDocuments, listUsers, setBlacklist, verifySeller, analytics, listAuditLogs };

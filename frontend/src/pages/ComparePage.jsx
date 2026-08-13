@@ -7,6 +7,7 @@ import PropertyThumb from "../components/property/PropertyThumb";
 import EmptyState from "../components/common/EmptyState";
 import Spinner from "../components/common/Spinner";
 import { formatPrice } from "../utils/format";
+import Seo from "../components/common/Seo";
 
 const ROWS = [
   ["Price", (p) => formatPrice(p.price) + (p.priceUnit || "")],
@@ -46,6 +47,7 @@ export default function ComparePage() {
 
   return (
     <div id="main-content">
+      <Seo title="Compare properties" noindex />
       <h1 className="f-display text-2xl sm:text-3xl font-semibold mb-5">Compare properties</h1>
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <table className="w-full border-collapse min-w-[560px]">
@@ -57,7 +59,7 @@ export default function ComparePage() {
                   <div className="vc-card p-3 text-left relative">
                     <button onClick={() => toggleCompare(p.id)} aria-label="Remove from comparison" className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-black/5"><X size={13} /></button>
                     <PropertyThumb property={p} height="h-20" className="rounded-lg mb-2" />
-                    <Link to={`/property/${p.id}`} className="text-sm font-semibold text-left hover:underline block">{p.title}</Link>
+                    <Link to={`/property/${p.slug || p.id}`} className="text-sm font-semibold text-left hover:underline block">{p.title}</Link>
                   </div>
                 </th>
               ))}

@@ -18,7 +18,7 @@ services:
           name: vasthuconnect-db
           property: connectionString
       - key: CLIENT_ORIGIN
-        sync: false   # set to your Vercel URL, e.g. https://vasthuconnect.vercel.app
+        sync: false   # set in the Render dashboard to https://veeralaxmevastu.com (this repo can't set it — Render env vars marked sync:false are dashboard-only)
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -29,6 +29,18 @@ services:
         sync: false
       - key: SMS_PROVIDER
         value: console
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: EMAIL_FROM
+        value: "VeeraaLaxme Vastu <noreply@veeralaxmevastu.com>"
+      - key: SMTP_HOST
+        value: smtp.hostinger.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER
+        value: noreply@veeralaxmevastu.com
+      - key: SMTP_PASS
+        sync: false   # set in the Render dashboard — the Hostinger mailbox password, never committed
       - key: STORAGE_PROVIDER
         value: cloudinary
       - key: CLOUDINARY_CLOUD_NAME

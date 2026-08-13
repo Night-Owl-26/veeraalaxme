@@ -7,13 +7,13 @@ import { formatPrice, initials } from "../../utils/format";
 
 export default function PropertyCard({ property, saved, liked, onToggleSave, onToggleLike, onToggleCompare, inCompare, showStatus }) {
   return (
-    <article className="vc-card overflow-hidden flex flex-col transition-shadow hover:shadow-md">
-      <Link to={`/property/${property.id}`} className="block focus-visible:outline-none">
-        <PropertyThumb property={property} />
+    <article className="vc-card vc-card-interactive group overflow-hidden flex flex-col">
+      <Link to={`/property/${property.slug || property.id}`} className="block focus-visible:outline-none overflow-hidden">
+        <PropertyThumb property={property} zoomOnHover />
       </Link>
       <div className="p-3.5 sm:p-4 flex-1 flex flex-col gap-2.5">
         <div className="flex items-start justify-between gap-2">
-          <Link to={`/property/${property.id}`} className="text-left min-w-0">
+          <Link to={`/property/${property.slug || property.id}`} className="text-left min-w-0">
             <h3 className="font-semibold text-[15px] leading-snug hover:underline line-clamp-2">{property.title}</h3>
           </Link>
           <VastuGauge score={property.vastu.score} facing={property.vastu.facing} size={44} />
@@ -46,7 +46,7 @@ export default function PropertyCard({ property, saved, liked, onToggleSave, onT
               <Heart size={16} fill={liked ? "var(--brick)" : "none"} color={liked ? "var(--brick)" : "var(--ink-soft)"} aria-hidden="true" />
               <span className="text-xs f-mono">{property.likes}</span>
             </button>
-            <Link to={`/property/${property.id}`} aria-label="View comments" className="p-2 -m-1 rounded-full hover:bg-black/5 min-w-[44px] min-h-[44px] flex items-center justify-center">
+            <Link to={`/property/${property.slug || property.id}`} aria-label="View comments" className="p-2 -m-1 rounded-full hover:bg-black/5 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <MessageCircle size={16} color="var(--ink-soft)" aria-hidden="true" />
             </Link>
             <button onClick={() => onToggleCompare(property.id)} aria-pressed={inCompare} aria-label="Add to compare" className="p-2 -m-1 rounded-full hover:bg-black/5 min-w-[44px] min-h-[44px] flex items-center justify-center">

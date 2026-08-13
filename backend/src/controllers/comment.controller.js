@@ -2,21 +2,21 @@ const prisma = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const { ok, fail } = require("../utils/apiResponse");
 const { notify } = require("../services/notificationService");
+const { resolvePropertyIdOrSlug } = require("./property.controller");
 
 // POST /api/properties/:id/comments
 const addComment = asyncHandler(async (req, res) => {
-  const propertyId = req.params.id;
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const property = await resolvePropertyIdOrSlug(req.params.id);
   if (!property || property.status !== "APPROVED") return fail(res, 404, "Listing not found");
 
   const comment = await prisma.comment.create({
-    data: { propertyId, userId: req.user.id, text: req.body.text },
+    data: { propertyId: property.id, userId: req.user.id, text: req.body.text },
     include: { user: true },
   });
 
   if (property.sellerId !== req.user.id) {
     await notify(req.app.get("io"), {
-      userId: property.sellerId, type: "COMMENT", message: `${req.user.name} commented on "${property.title}"`, link: `/property/${propertyId}`,
+      userId: property.sellerId, type: "COMMENT", message: `${req.user.name} commented on "${property.title}"`, link: `/property/${property.slug}`,
     });
   }
 

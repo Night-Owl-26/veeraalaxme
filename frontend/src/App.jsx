@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -12,19 +12,34 @@ import MobileTabBar from "./components/layout/MobileTabBar";
 import EmiCalculatorModal from "./components/common/EmiCalculatorModal";
 import Spinner from "./components/common/Spinner";
 
-import LoginPage from "./pages/LoginPage";
+// The home feed is what nearly every first-time visit renders, so it stays
+// in the main bundle — no benefit to lazy-loading the one route almost
+// everyone hits immediately. Everything else is its own chunk, downloaded
+// only when actually visited. This matters most for PropertyDetailPage and
+// PostPropertyPage specifically: both pull in Leaflet (map + location
+// picker), a sizeable library that, before this split, every visitor
+// downloaded on first load even if they only ever browsed the feed.
 import FeedPage from "./pages/FeedPage";
-import PropertyDetailPage from "./pages/PropertyDetailPage";
-import PostPropertyPage from "./pages/PostPropertyPage";
-import ComparePage from "./pages/ComparePage";
-import AdminPage from "./pages/AdminPage";
-import ChatPage from "./pages/ChatPage";
-import ProfilePage from "./pages/ProfilePage";
-import VastuAdvisorPage from "./pages/VastuAdvisorPage";
-import LandVastuPage from "./pages/LandVastuPage";
-import HomeVastuPage from "./pages/HomeVastuPage";
-import VastuReportsPage from "./pages/VastuReportsPage";
-import NotFoundPage from "./pages/NotFoundPage";
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const PropertyDetailPage = lazy(() => import("./pages/PropertyDetailPage"));
+const PostPropertyPage = lazy(() => import("./pages/PostPropertyPage"));
+const ComparePage = lazy(() => import("./pages/ComparePage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const VastuContactPage = lazy(() => import("./pages/VastuContactPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <Spinner label="Loading…" />
+    </div>
+  );
+}
 
 function Shell() {
   const { loading } = useAuth();
@@ -34,7 +49,7 @@ function Shell() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Spinner label="Loading VasthuConnect…" />
+        <Spinner label="Loading VeeraaLaxme Vastu…" />
       </div>
     );
   }
@@ -45,30 +60,31 @@ function Shell() {
 
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-6 flex-1">
         <ErrorBoundary>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<FeedPage mode="all" />} />
-            <Route path="/property/:id" element={<PropertyDetailPage />} />
-            <Route path="/compare" element={<ComparePage />} />
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/" element={<FeedPage mode="all" />} />
+              <Route path="/property/:id" element={<PropertyDetailPage />} />
+              <Route path="/compare" element={<ComparePage />} />
 
-            <Route path="/vastu" element={<VastuAdvisorPage />} />
-            <Route path="/vastu/land" element={<LandVastuPage />} />
-            <Route path="/vastu/home" element={<HomeVastuPage />} />
-            <Route path="/vastu/reports" element={<ProtectedRoute><VastuReportsPage /></ProtectedRoute>} />
-            <Route path="/vastu/reports/:id" element={<ProtectedRoute><VastuReportsPage /></ProtectedRoute>} />
+              <Route path="/vastu" element={<VastuContactPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
 
-            <Route path="/saved" element={<ProtectedRoute><FeedPage mode="saved" /></ProtectedRoute>} />
-            <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-            <Route path="/chat/:threadId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/saved" element={<ProtectedRoute><FeedPage mode="saved" /></ProtectedRoute>} />
+              <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+              <Route path="/chat/:threadId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
-            <Route path="/post" element={<ProtectedRoute roles={["SELLER", "ADMIN"]}><PostPropertyPage /></ProtectedRoute>} />
-            <Route path="/my-listings" element={<ProtectedRoute roles={["SELLER", "ADMIN"]}><FeedPage mode="mine" /></ProtectedRoute>} />
+              <Route path="/post" element={<ProtectedRoute roles={["SELLER", "ADMIN"]}><PostPropertyPage /></ProtectedRoute>} />
+              <Route path="/my-listings" element={<ProtectedRoute roles={["SELLER", "ADMIN"]}><FeedPage mode="mine" /></ProtectedRoute>} />
 
-            <Route path="/admin" element={<ProtectedRoute roles={["ADMIN"]}><AdminPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute roles={["ADMIN"]}><AdminPage /></ProtectedRoute>} />
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </main>
 

@@ -37,7 +37,7 @@ async function generatePropertyDescription({ title, type, city, locality, areaLa
 }
 
 async function generateVastuInsight({ facing, kitchenDir, poojaRoom }) {
-  const prompt = `You are a friendly Vastu Shastra advisor for an Indian real-estate app called VasthuConnect. Give a short, illustrative (not authoritative) 3-sentence note about a property, in plain conversational English, covering: what the facing direction (${facing}) generally means in Vastu tradition, one comment on the kitchen direction (${kitchenDir}), and one comment on whether having a pooja room (${poojaRoom ? "yes" : "no"}) helps. End with a one-line practical tip. Do not use markdown headers or bullet points, just flowing sentences. Keep it under 90 words.`;
+  const prompt = `You are a friendly Vastu Shastra advisor for an Indian real-estate app called VeeraaLaxme Vastu. Give a short, illustrative (not authoritative) 3-sentence note about a property, in plain conversational English, covering: what the facing direction (${facing}) generally means in Vastu tradition, one comment on the kitchen direction (${kitchenDir}), and one comment on whether having a pooja room (${poojaRoom ? "yes" : "no"}) helps. End with a one-line practical tip. Do not use markdown headers or bullet points, just flowing sentences. Keep it under 90 words.`;
   return callClaude(prompt, 300);
 }
 
@@ -52,7 +52,7 @@ async function generateVastuExplanation({ type, overallScore, categoryScores, fi
 
   const summarizeRule = (r) => `- [${r.category}] ${r.explanation}`;
 
-  const prompt = `You are a Vastu Shastra advisor for an Indian real-estate app called VasthuConnect. Below is a ${type === "LAND" ? "land plot" : "home"} Vastu analysis that was already computed by a deterministic rule engine — the score and every finding are final and already correct. Your ONLY job is to summarize these findings in warm, plain, conversational English for the homeowner. Do NOT invent any new Vastu claims, rules, or recommendations beyond what is listed below. Do NOT state or imply a different score than the one given. Do NOT use markdown headers, bullet points, or bold text — write flowing paragraphs only. Keep it under 140 words. End with one encouraging, practical closing sentence.
+  const prompt = `You are a Vastu Shastra advisor for an Indian real-estate app called VeeraaLaxme Vastu. Below is a ${type === "LAND" ? "land plot" : "home"} Vastu analysis that was already computed by a deterministic rule engine — the score and every finding are final and already correct. Your ONLY job is to summarize these findings in warm, plain, conversational English for the homeowner. Do NOT invent any new Vastu claims, rules, or recommendations beyond what is listed below. Do NOT state or imply a different score than the one given. Do NOT use markdown headers, bullet points, or bold text — write flowing paragraphs only. Keep it under 140 words. End with one encouraging, practical closing sentence.
 
 Overall score: ${overallScore ?? "not enough data yet"} / 100
 Category scores: ${JSON.stringify(categoryScores)}

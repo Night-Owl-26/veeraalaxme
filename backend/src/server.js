@@ -16,7 +16,7 @@ initChatSocket(io);
 app.set("io", io);
 
 server.listen(env.port, () => {
-  console.log(`VasthuConnect API listening on http://localhost:${env.port} (${env.nodeEnv})`);
+  console.log(`VeeraaLaxme Vastu API listening on http://localhost:${env.port} (${env.nodeEnv})`);
 });
 
 process.on("unhandledRejection", (err) => {

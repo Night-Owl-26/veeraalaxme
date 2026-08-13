@@ -1,11 +1,20 @@
+const bcrypt = require("bcryptjs");
 const prisma = require("../config/db");
 const env = require("../config/env");
 const asyncHandler = require("../utils/asyncHandler");
 const { ok, fail, ApiError } = require("../utils/apiResponse");
-const { generateOtp, hashOtp, verifyOtp } = require("../utils/otp");
-const { sendSms } = require("../services/smsService");
+const { generateOtp, hashOtp, verifyOtp, canSendOtp } = require("../utils/otp");
+const { sendEmail } = require("../services/emailService");
 const { signAccessToken, signRefreshToken, verifyRefreshToken, hashToken } = require("../utils/jwt");
 const { issueCsrfCookie } = require("../middleware/csrf");
+
+// Compared against when a login attempt targets a phone number with no
+// account (or no password set) at all, so that branch still pays the same
+// bcrypt cost as a real wrong-password check. Skipping bcrypt entirely for
+// unknown numbers would make "no such account" respond measurably faster
+// than "wrong password" — an attacker could use that timing gap to
+// enumerate registered phone numbers even though the error text is identical.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-safety-dummy-password", 10);
 
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_OPTS = {
@@ -21,8 +30,10 @@ function publicUser(user) {
     id: user.id,
     name: user.name,
     phone: user.phone,
+    email: user.email,
     role: user.role,
     phoneVerified: user.phoneVerified,
+    emailVerified: user.emailVerified,
     isVerifiedSeller: user.isVerifiedSeller,
     avatarUrl: user.avatarUrl,
   };
@@ -45,42 +56,47 @@ async function issueSession(res, user) {
   return accessToken;
 }
 
-// POST /api/auth/otp/request
-// Kicks off either registration or login. For login, the phone must already
-// belong to an account (we don't reveal whether it does, beyond a generic
-// message, to avoid leaking which numbers are registered).
-const requestOtp = asyncHandler(async (req, res) => {
-  const { phone, purpose, name, role } = req.body;
+// POST /api/auth/register/request-otp
+// Step 1 of registration: validate the phone/email aren't already taken,
+// then email a 6-digit code. Nothing is persisted about the user yet — the
+// account is only created once the code is verified.
+const requestRegisterOtp = asyncHandler(async (req, res) => {
+  const { phone, email } = req.body;
 
-  if (purpose === "login") {
-    const existing = await prisma.user.findUnique({ where: { phone } });
-    if (!existing) return fail(res, 404, "No account found for this phone number");
-    if (existing.isBlacklisted) return fail(res, 403, "This account has been suspended");
-  } else {
-    const existing = await prisma.user.findUnique({ where: { phone } });
-    if (existing) return fail(res, 409, "An account already exists for this phone number — try logging in instead");
-  }
+  const existingPhone = await prisma.user.findUnique({ where: { phone } });
+  if (existingPhone) return fail(res, 409, "An account already exists for this phone number — try logging in instead");
+
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) return fail(res, 409, "An account already exists for this email address — try logging in instead");
+
+  if (!canSendOtp(email)) return fail(res, 429, "A code was already sent recently — please wait before requesting another");
 
   const code = generateOtp();
   const codeHash = await hashOtp(code);
   const expiresAt = new Date(Date.now() + env.otp.ttlMinutes * 60 * 1000);
 
-  await prisma.otpCode.create({ data: { phone, codeHash, purpose, expiresAt } });
-  await sendSms(phone, `${code} is your VasthuConnect verification code. It expires in ${env.otp.ttlMinutes} minutes.`);
+  await prisma.otpCode.create({ data: { email, codeHash, purpose: "register", expiresAt } });
+  await sendEmail(
+    email,
+    "Your VeeraaLaxme Vastu verification code",
+    `${code} is your VeeraaLaxme Vastu verification code. It expires in ${env.otp.ttlMinutes} minutes.`
+  );
 
   return ok(res, { otpSent: true, expiresInMinutes: env.otp.ttlMinutes });
 });
 
-// POST /api/auth/otp/verify
-const verifyOtpAndAuth = asyncHandler(async (req, res) => {
-  const { phone, code, purpose, name, role } = req.body;
+// POST /api/auth/register/verify-otp
+// Step 2: verify the emailed code, then create the account with a hashed
+// password and log the user straight in.
+const verifyRegisterOtp = asyncHandler(async (req, res) => {
+  const { name, phone, email, password, role, code } = req.body;
 
   const record = await prisma.otpCode.findFirst({
-    where: { phone, purpose, consumedAt: null },
+    where: { email, purpose: "register", consumedAt: null },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!record) return fail(res, 400, "No pending verification for this number — request a new code");
+  if (!record) return fail(res, 400, "No pending verification for this email — request a new code");
   if (record.expiresAt < new Date()) return fail(res, 400, "This code has expired — request a new one");
   if (record.attempts >= env.otp.maxAttempts) return fail(res, 429, "Too many incorrect attempts — request a new code");
 
@@ -92,20 +108,100 @@ const verifyOtpAndAuth = asyncHandler(async (req, res) => {
 
   await prisma.otpCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
 
-  let user;
-  if (purpose === "register") {
-    if (!name || !role) return fail(res, 422, "name and role are required to register");
-    const existing = await prisma.user.findUnique({ where: { phone } });
-    if (existing) return fail(res, 409, "An account already exists for this phone number");
-    user = await prisma.user.create({ data: { phone, name, role, phoneVerified: true } });
-  } else {
-    user = await prisma.user.findUnique({ where: { phone } });
-    if (!user) return fail(res, 404, "Account not found");
-    if (!user.phoneVerified) user = await prisma.user.update({ where: { id: user.id }, data: { phoneVerified: true } });
-  }
+  // Re-check uniqueness — the OTP window gives a small race window for the
+  // phone/email to have been claimed by someone else in the meantime.
+  const existingPhone = await prisma.user.findUnique({ where: { phone } });
+  if (existingPhone) return fail(res, 409, "An account already exists for this phone number");
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) return fail(res, 409, "An account already exists for this email address");
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: { phone, name, email, passwordHash, role, emailVerified: true },
+  });
 
   const accessToken = await issueSession(res, user);
   return ok(res, { accessToken, user: publicUser(user) });
+});
+
+// POST /api/auth/login
+const login = asyncHandler(async (req, res) => {
+  const { phone, password } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { phone } });
+  // Same generic message whether the phone is unknown or the password is
+  // wrong — this avoids leaking which phone numbers have accounts.
+  const invalid = () => fail(res, 401, "Incorrect phone number or password");
+
+  if (user?.isBlacklisted) return fail(res, 403, "This account has been suspended");
+
+  const valid = await bcrypt.compare(password, user?.passwordHash || DUMMY_PASSWORD_HASH);
+  if (!user || !user.passwordHash || !valid) return invalid();
+
+  const accessToken = await issueSession(res, user);
+  return ok(res, { accessToken, user: publicUser(user) });
+});
+
+// POST /api/auth/password/forgot
+// Always responds the same way regardless of whether the phone number has an
+// account — otherwise this endpoint becomes a phone-number-existence oracle.
+// The OTP goes to the email already on file, never a client-supplied one, so
+// this can't be used to hijack an account by pointing resets at another inbox.
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { phone } = req.body;
+  const GENERIC_MESSAGE = "If that phone number has an account, we've sent a password reset code to the email on file.";
+
+  const user = await prisma.user.findUnique({ where: { phone } });
+  // Throttle check must never change the response shape (same generic
+  // message either way) — otherwise a timing/response difference between
+  // "throttled" and "no such account" would itself leak account existence.
+  if (user && user.email && !user.isBlacklisted && canSendOtp(user.email)) {
+    const code = generateOtp();
+    const codeHash = await hashOtp(code);
+    const expiresAt = new Date(Date.now() + env.otp.ttlMinutes * 60 * 1000);
+    await prisma.otpCode.create({ data: { email: user.email, codeHash, purpose: "reset", expiresAt } });
+    await sendEmail(
+      user.email,
+      "Your VeeraaLaxme Vastu password reset code",
+      `${code} is your VeeraaLaxme Vastu password reset code. It expires in ${env.otp.ttlMinutes} minutes. If you didn't request this, you can ignore this email.`
+    );
+  }
+
+  return ok(res, { message: GENERIC_MESSAGE });
+});
+
+// POST /api/auth/password/reset
+const resetPassword = asyncHandler(async (req, res) => {
+  const { phone, code, newPassword } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { phone } });
+  if (!user || !user.email) return fail(res, 400, "Invalid or expired code");
+
+  const record = await prisma.otpCode.findFirst({
+    where: { email: user.email, purpose: "reset", consumedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!record) return fail(res, 400, "No pending reset for this account — request a new code");
+  if (record.expiresAt < new Date()) return fail(res, 400, "This code has expired — request a new one");
+  if (record.attempts >= env.otp.maxAttempts) return fail(res, 429, "Too many incorrect attempts — request a new code");
+
+  const valid = await verifyOtp(code, record.codeHash);
+  if (!valid) {
+    await prisma.otpCode.update({ where: { id: record.id }, data: { attempts: { increment: 1 } } });
+    return fail(res, 400, "Incorrect code");
+  }
+
+  await prisma.otpCode.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+  // A password reset invalidates every existing session — if the account was
+  // compromised, this locks the attacker out along with everyone else.
+  await prisma.refreshToken.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+
+  return ok(res, { reset: true });
 });
 
 // POST /api/auth/refresh — reads the httpOnly cookie, rotates the token.
@@ -154,4 +250,4 @@ const me = asyncHandler(async (req, res) => {
   return ok(res, { user: publicUser(user) });
 });
 
-module.exports = { requestOtp, verifyOtpAndAuth, refresh, logout, me };
+module.exports = { requestRegisterOtp, verifyRegisterOtp, login, forgotPassword, resetPassword, refresh, logout, me };

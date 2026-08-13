@@ -2,12 +2,13 @@ const prisma = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const { ok, fail } = require("../utils/apiResponse");
 const { recordAudit } = require("../services/auditService");
+const { resolvePropertyIdOrSlug } = require("./property.controller");
 
 // POST /api/properties/:id/report
 const fileReport = asyncHandler(async (req, res) => {
-  const propertyId = req.params.id;
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const property = await resolvePropertyIdOrSlug(req.params.id);
   if (!property) return fail(res, 404, "Listing not found");
+  const propertyId = property.id;
 
   const report = await prisma.report.create({
     data: { propertyId, reporterId: req.user.id, reason: req.body.reason, details: req.body.details },

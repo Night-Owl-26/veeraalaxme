@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Loader2, ImagePlus, X } from "lucide-react";
+import { Sparkles, Loader2, ImagePlus, X, CheckCircle2 } from "lucide-react";
 import { propertiesApi } from "../api/properties";
 import { aiApi } from "../api/ai";
 import { useToast } from "../context/ToastContext";
 import VastuGauge from "../components/property/VastuGauge";
+import LocationPicker from "../components/property/LocationPicker";
+import Modal from "../components/common/Modal";
 import { PROPERTY_TYPES } from "../components/property/FilterPanel";
 import { formatPrice } from "../utils/format";
 import { propertyDraftSchema, validate } from "../utils/validation";
+import Seo from "../components/common/Seo";
 
 const BLANK = {
   title: "", type: "Villa", price: "", negotiable: true, city: "", locality: "", areaLabel: "",
   bedrooms: "", bathrooms: "", facing: "N", kitchenDir: "S", entranceDir: "N", poojaRoom: false,
   water: true, electricity: true, compoundWall: true, road: "", description: "", surveyNumber: "",
   ownership: "Freehold", loanAvailable: true, website: "", // website = honeypot
+  latitude: null, longitude: null,
 };
 
 function computeVastuScorePreview({ facing, kitchenDir, poojaRoom, water }) {
@@ -35,6 +39,7 @@ export default function PostPropertyPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [published, setPublished] = useState(null); // holds the created property once published
   const totalSteps = 6;
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
@@ -62,15 +67,29 @@ export default function PostPropertyPage() {
   const canNext = () => {
     if (step === 1) return draft.title.trim().length >= 5 && draft.price;
     if (step === 2) return draft.city.trim() && draft.locality.trim() && draft.areaLabel.trim();
+    if (step === 5) return draft.description.trim().length >= 10;
     return true;
   };
+
+  // Which step each schema field lives on, so a validation failure sends the
+  // user back to where they can actually see and fix it — previously this
+  // always jumped to step 1, which only renders title/price errors, so a
+  // failure on any other field (most commonly description) looked like the
+  // form had silently reset with nothing wrong.
+  const FIELD_STEP = { title: 1, price: 1, city: 2, locality: 2, areaLabel: 2, description: 5 };
 
   const handleSubmit = async () => {
     const { valid, errors: fieldErrors } = validate(propertyDraftSchema, {
       title: draft.title, price: Number(draft.price), city: draft.city, locality: draft.locality,
       areaLabel: draft.areaLabel, description: draft.description,
     });
-    if (!valid) { setErrors(fieldErrors); setStep(1); return; }
+    if (!valid) {
+      setErrors(fieldErrors);
+      const firstBadField = Object.keys(fieldErrors)[0];
+      setStep(FIELD_STEP[firstBadField] || 1);
+      showToast(fieldErrors[firstBadField] || "Please check the highlighted fields", "error");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -80,6 +99,7 @@ export default function PostPropertyPage() {
         bedrooms: draft.bedrooms ? Number(draft.bedrooms) : undefined, bathrooms: draft.bathrooms ? Number(draft.bathrooms) : undefined,
         facing: draft.facing, kitchenDir: draft.kitchenDir, entranceDir: draft.entranceDir, poojaRoom: draft.poojaRoom,
         water: draft.water, electricity: draft.electricity, compoundWall: draft.compoundWall, road: draft.road || undefined,
+        latitude: draft.latitude ?? undefined, longitude: draft.longitude ?? undefined,
         description: draft.description, surveyNumber: draft.surveyNumber || undefined, ownership: draft.ownership,
         loanAvailable: draft.loanAvailable, website: draft.website,
       };
@@ -87,8 +107,7 @@ export default function PostPropertyPage() {
       if (images.length) {
         try { await propertiesApi.uploadImages(property.id, images); } catch (e) { showToast("Listing saved, but photo upload failed — add them from My Listings", "error"); }
       }
-      showToast("Submitted — awaiting admin approval");
-      navigate("/my-listings");
+      setPublished(property);
     } catch (e) {
       showToast(e.message, "error");
     } finally {
@@ -98,8 +117,9 @@ export default function PostPropertyPage() {
 
   return (
     <div id="main-content" className="max-w-2xl mx-auto pb-8">
+      <Seo title="Post a property" noindex />
       <h1 className="f-display text-2xl sm:text-3xl font-semibold mb-1">Post a property</h1>
-      <p className="text-sm mb-6" style={{ color: "var(--ink-muted)" }}>Listings are reviewed by an admin before they appear in the feed.</p>
+      <p className="text-sm mb-6" style={{ color: "var(--ink-muted)" }}>Your listing goes live immediately after posting.</p>
 
       <div className="flex items-center gap-1.5 mb-6" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={totalSteps}>
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -144,6 +164,9 @@ export default function PostPropertyPage() {
               <Field label="Bathrooms (optional)"><input className="vc-input" type="number" min="0" value={draft.bathrooms} onChange={(e) => set({ bathrooms: e.target.value })} /></Field>
             </div>
             <Field label="Road Width / Access"><input className="vc-input" value={draft.road} onChange={(e) => set({ road: e.target.value })} placeholder="30 ft" /></Field>
+            <Field label="Map location (optional, but powers the map & nearby places on the listing)">
+              <LocationPicker lat={draft.latitude} lng={draft.longitude} onChange={(lat, lng) => set({ latitude: lat, longitude: lng })} />
+            </Field>
           </div>
         )}
 
@@ -217,7 +240,13 @@ export default function PostPropertyPage() {
                 </button>
               </div>
               <textarea className={`vc-input ${errors.description ? "invalid" : ""}`} rows={4} value={draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Describe the property, or generate a draft with AI above." />
-              {errors.description && <p className="text-[11px] mt-1 font-medium" style={{ color: "var(--brick)" }}>{errors.description}</p>}
+              {errors.description ? (
+                <p className="text-[11px] mt-1 font-medium" style={{ color: "var(--brick)" }}>{errors.description}</p>
+              ) : (
+                <p className="text-[11px] mt-1" style={{ color: draft.description.trim().length >= 10 ? "var(--ink-muted)" : "var(--brick)" }}>
+                  {draft.description.trim().length >= 10 ? "Looks good." : `At least 10 characters needed to continue (${draft.description.trim().length}/10).`}
+                </p>
+              )}
               {aiError && <p className="text-xs mt-1" style={{ color: "var(--brick)" }}>{aiError}</p>}
             </div>
           </div>
@@ -247,10 +276,36 @@ export default function PostPropertyPage() {
           {step < totalSteps ? (
             <button onClick={() => setStep((s) => s + 1)} disabled={!canNext()} className="vc-btn-primary px-5 py-2.5 text-sm min-h-[44px]">Continue</button>
           ) : (
-            <button onClick={handleSubmit} disabled={submitting} className="vc-btn-primary px-5 py-2.5 text-sm min-h-[44px]">{submitting ? "Submitting…" : "Submit for Review"}</button>
+            <button onClick={handleSubmit} disabled={submitting} className="vc-btn-primary px-5 py-2.5 text-sm min-h-[44px]">{submitting ? "Publishing…" : "Publish listing"}</button>
           )}
         </div>
       </div>
+
+      {published && (
+        <Modal title="Listing published" onClose={() => navigate("/my-listings")}>
+          <div className="text-center py-2">
+            <CheckCircle2 size={48} className="mx-auto mb-3" style={{ color: "var(--banyan)" }} aria-hidden="true" />
+            <p className="font-semibold text-lg mb-1">Your listing is live</p>
+            <p className="text-sm mb-6" style={{ color: "var(--ink-muted)" }}>
+              "{published.title}" is published and already showing in the feed for everyone to see.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => navigate(`/property/${published.slug || published.id}`)} className="vc-btn-primary w-full py-3 text-sm">
+                View my listing
+              </button>
+              <button
+                onClick={() => { setPublished(null); setDraft(BLANK); setImages([]); setStep(1); }}
+                className="vc-btn-ghost w-full py-3 text-sm font-semibold"
+              >
+                Post another property
+              </button>
+              <button onClick={() => navigate("/my-listings")} className="w-full text-center text-xs font-semibold mt-1" style={{ color: "var(--ink-muted)" }}>
+                Go to My Listings
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

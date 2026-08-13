@@ -9,10 +9,9 @@ const { sanitizeFields } = require("../middleware/sanitize");
 const { createPropertySchema, updatePropertySchema, searchQuerySchema, commentSchema, reportSchema } = require("../validators/property.validators");
 const { imageUpload, docUpload } = require("../middleware/upload");
 const { postPropertyLimiter } = require("../middleware/rateLimiters");
-const prisma = require("../config/db");
 
 const loadPropertyOwner = async (req) => {
-  const p = await prisma.property.findUnique({ where: { id: req.params.id } });
+  const p = await ctrl.resolvePropertyIdOrSlug(req.params.id);
   return p?.sellerId || null;
 };
 
