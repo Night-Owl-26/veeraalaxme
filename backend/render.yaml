@@ -24,7 +24,14 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: FIELD_ENCRYPTION_KEY
-        generateValue: true
+        # NOT generateValue: true — this must be an exact 32-byte value,
+        # hex-encoded (64 hex characters), because it's used directly as an
+        # AES-256-GCM key. Render's generateValue doesn't know that shape
+        # constraint and can produce a value the wrong length, which throws
+        # "invalid key length" the moment a survey number is ever encrypted
+        # (that 500 surfaces as a generic "Something went wrong" in prod).
+        # Generate a correct one with: openssl rand -hex 32
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SMS_PROVIDER
