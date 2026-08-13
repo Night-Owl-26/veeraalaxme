@@ -56,11 +56,15 @@ module.exports = {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    // HTTP-based alternative to SMTP — sends over regular HTTPS, so it isn't
-    // affected by cloud hosts (Render, Railway, etc.) blocking or dropping
-    // outbound SMTP ports, which raw SMTP delivery can silently hang on for
-    // minutes before failing. Set EMAIL_PROVIDER=resend to use this instead.
+    // HTTP-based alternatives to SMTP — send over regular HTTPS, so they
+    // aren't affected by cloud hosts (Render, Railway, etc.) blocking or
+    // dropping outbound SMTP ports, which raw SMTP delivery can silently
+    // hang on for minutes before failing. resend requires full domain DNS
+    // verification; sendgrid's Single Sender Verification only needs a
+    // confirmation click on the from-address mailbox — pick whichever's
+    // less friction and set EMAIL_PROVIDER to match.
     resendApiKey: process.env.RESEND_API_KEY,
+    sendgridApiKey: process.env.SENDGRID_API_KEY,
   },
 
   storage: {

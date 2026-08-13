@@ -30,11 +30,13 @@ services:
       - key: SMS_PROVIDER
         value: console
       - key: EMAIL_PROVIDER
-        value: resend   # Render's outbound network can't reach Hostinger's SMTP server (connections hang ~2min then fail) — Resend delivers over HTTPS instead, which isn't affected
+        value: sendgrid   # Render's outbound network can't reach Hostinger's SMTP server (connections hang ~2min then fail) — SendGrid delivers over HTTPS instead, which isn't affected. Uses Single Sender Verification (no DNS changes needed)
       - key: EMAIL_FROM
         value: "VeeraaLaxme Vastu <noreply@veeralaxmevastu.com>"
+      - key: SENDGRID_API_KEY
+        sync: false   # set in the Render dashboard — from app.sendgrid.com, after verifying noreply@veeralaxmevastu.com as a Single Sender
       - key: RESEND_API_KEY
-        sync: false   # set in the Render dashboard — from resend.com
+        sync: false   # set in the Render dashboard — alternative provider (needs full domain DNS verification), not used while EMAIL_PROVIDER=sendgrid
       - key: SMTP_HOST
         value: smtp.hostinger.com
       - key: SMTP_PORT
@@ -42,7 +44,7 @@ services:
       - key: SMTP_USER
         value: noreply@veeralaxmevastu.com
       - key: SMTP_PASS
-        sync: false   # set in the Render dashboard — the Hostinger mailbox password, never committed. Kept as a fallback option; not used while EMAIL_PROVIDER=resend
+        sync: false   # set in the Render dashboard — the Hostinger mailbox password, never committed. Kept as a fallback option; not used while EMAIL_PROVIDER=sendgrid
       - key: STORAGE_PROVIDER
         value: cloudinary
       - key: CLOUDINARY_CLOUD_NAME
