@@ -11,6 +11,7 @@
     "prisma:seed": "node prisma/seed.js",
     "prisma:seed-vastu": "node prisma/vastuRulesSeed.js",
     "prisma:studio": "prisma studio",
+    "create-admin": "node scripts/create-admin.js",
     "test": "node --test src/**/__tests__/*.test.js"
   },
   "dependencies": {
