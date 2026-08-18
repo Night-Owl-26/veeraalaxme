@@ -308,6 +308,14 @@ const uploadImages = asyncHandler(async (req, res) => {
     try {
       saved = await saveImage(file.buffer, file.originalname);
     } catch (e) {
+      // Logged unmasked server-side regardless of environment, since the
+      // client-facing message below is deliberately generic — this is the
+      // only place the real cause (e.g. missing/invalid Cloudinary
+      // credentials vs. an actually-corrupt image) is visible at all.
+      console.error("[uploadImages] saveImage failed:", e.message);
+      if (/cloudinary/i.test(e.message || "")) {
+        throw new ApiError(502, "Image storage isn't configured correctly on the server — contact support");
+      }
       throw new ApiError(422, "One of the uploaded files isn't a valid image");
     }
     const { url, pHash } = saved;
@@ -345,6 +353,10 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     try {
       saved = await saveDocument(file.buffer, file.mimetype);
     } catch (e) {
+      console.error("[uploadDocuments] saveDocument failed:", e.message);
+      if (/cloudinary/i.test(e.message || "")) {
+        throw new ApiError(502, "Document storage isn't configured correctly on the server — contact support");
+      }
       throw new ApiError(422, "One of the uploaded files couldn't be processed");
     }
     const { url } = saved;
