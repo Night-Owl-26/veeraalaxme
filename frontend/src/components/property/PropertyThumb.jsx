@@ -1,4 +1,5 @@
 import { Home as HomeIcon, Building2, TreePine, Store, Warehouse, CheckCircle2 } from "lucide-react";
+import { resolveMediaUrl } from "../../utils/format";
 
 const TYPE_ICON = {
   "Residential Land": TreePine, "Agricultural Land": TreePine, "Commercial Land": TreePine,
@@ -17,13 +18,12 @@ function gradientFor(id) {
 export default function PropertyThumb({ property, className = "", height = "h-44", zoomOnHover = false }) {
   const Icon = TYPE_ICON[property.type] || HomeIcon;
   const imageUrl = property.images?.[0]?.url;
-  const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/api$/, "");
 
   return (
     <div className={`relative ${height} ${className} flex items-center justify-center overflow-hidden`} style={!imageUrl ? { background: gradientFor(property.id) } : undefined}>
       {imageUrl ? (
         <img
-          src={`${apiOrigin}${imageUrl}`} alt={property.title} loading="lazy"
+          src={resolveMediaUrl(imageUrl)} alt={property.title} loading="lazy"
           className={`w-full h-full object-cover ${zoomOnHover ? "transition-transform duration-300 group-hover:scale-105" : ""}`}
         />
       ) : (

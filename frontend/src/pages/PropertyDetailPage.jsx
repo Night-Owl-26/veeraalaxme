@@ -20,7 +20,7 @@ import Pill from "../components/property/Pill";
 import MapView from "../components/property/MapView";
 import Spinner from "../components/common/Spinner";
 import EmiCalculatorModal from "../components/common/EmiCalculatorModal";
-import { formatPrice, initials, timeAgo } from "../utils/format";
+import { formatPrice, initials, timeAgo, resolveMediaUrl } from "../utils/format";
 
 const NEARBY_ICONS = [
   { key: "school", label: "School" }, { key: "hospital", label: "Hospital" },
@@ -176,7 +176,7 @@ export default function PropertyDetailPage() {
                   style={{ border: "1px solid var(--line)" }}
                 >
                   <img
-                    src={`${(import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/api$/, "")}${img.url}`}
+                    src={resolveMediaUrl(img.url)}
                     alt="" className="w-full h-full object-cover"
                   />
                 </button>
@@ -188,7 +188,6 @@ export default function PropertyDetailPage() {
           {lightboxIndex !== null && property.images?.length > 0 && (
             <ImageLightbox
               images={property.images} initialIndex={lightboxIndex}
-              apiOrigin={(import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/api$/, "")}
               onClose={() => setLightboxIndex(null)}
             />
           )}

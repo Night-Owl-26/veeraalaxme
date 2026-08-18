@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { resolveMediaUrl } from "../../utils/format";
 
 const ZOOM_STEPS = [1, 1.5, 2, 3];
 
-export default function ImageLightbox({ images, initialIndex = 0, apiOrigin, onClose }) {
+export default function ImageLightbox({ images, initialIndex = 0, onClose }) {
   const [index, setIndex] = useState(initialIndex);
   const [zoomStep, setZoomStep] = useState(0);
 
@@ -67,7 +68,7 @@ export default function ImageLightbox({ images, initialIndex = 0, apiOrigin, onC
 
         <div className={`w-full h-full flex items-center justify-center ${scale > 1 ? "overflow-auto" : "overflow-hidden"}`} onClick={(e) => e.stopPropagation()}>
           <img
-            src={`${apiOrigin}${current.url}`} alt=""
+            src={resolveMediaUrl(current.url)} alt=""
             className="max-w-none transition-transform duration-150"
             style={{ transform: `scale(${scale})`, maxHeight: scale === 1 ? "80vh" : "none", maxWidth: scale === 1 ? "90vw" : "none" }}
           />
@@ -91,7 +92,7 @@ export default function ImageLightbox({ images, initialIndex = 0, apiOrigin, onC
               className="w-14 h-14 rounded-lg overflow-hidden shrink-0"
               style={{ outline: i === index ? "2px solid var(--turmeric)" : "2px solid transparent" }}
             >
-              <img src={`${apiOrigin}${img.url}`} alt="" className="w-full h-full object-cover" />
+              <img src={resolveMediaUrl(img.url)} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>

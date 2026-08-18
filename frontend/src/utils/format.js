@@ -19,3 +19,16 @@ export function timeAgo(dateStr) {
 export function initials(name = "") {
   return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
+
+// Property/document URLs come back in two shapes depending on STORAGE_PROVIDER
+// on the backend: a relative path like "/uploads/xyz.webp" for local disk
+// storage, or an already-complete URL like "https://res.cloudinary.com/..."
+// for Cloudinary/S3. Only the relative form needs the API origin prepended —
+// doing that unconditionally turns a Cloudinary URL into a broken one like
+// "https://api.example.com/https://res.cloudinary.com/...".
+export function resolveMediaUrl(url) {
+  if (!url) return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  const apiOrigin = (import.meta.env.VITE_API_URL || "http://localhost:4000/api").replace(/\/api$/, "");
+  return `${apiOrigin}${url}`;
+}
