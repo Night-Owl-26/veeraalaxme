@@ -7,11 +7,16 @@
 //   httpOnly refresh cookie.
 // - The refresh token itself is an httpOnly cookie the browser attaches
 //   automatically; JS here never touches it directly.
-// - Every state-changing request echoes the readable csrf_token cookie
-//   back as a header, so the cookie alone can't be used cross-site.
+// - The CSRF token is also held in memory rather than read from
+//   document.cookie: the frontend and backend are deployed on unrelated
+//   domains, and a cookie set by the backend's domain is invisible to JS
+//   running on the frontend's origin no matter how it's configured. Login/
+//   register/refresh return the current CSRF value directly in their
+//   response body instead, alongside the access token.
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 let accessToken = null;
+let csrfToken = null;
 let unauthorizedHandler = null;
 
 export function setAccessToken(token) {
@@ -20,13 +25,11 @@ export function setAccessToken(token) {
 export function getAccessToken() {
   return accessToken;
 }
+export function setCsrfToken(token) {
+  csrfToken = token;
+}
 export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = fn;
-}
-
-function readCsrfCookie() {
-  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
 }
 
 async function tryRefresh() {
@@ -34,12 +37,13 @@ async function tryRefresh() {
     const res = await fetch(`${API_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
-      headers: { "X-CSRF-Token": readCsrfCookie() || "" },
+      headers: { "X-CSRF-Token": csrfToken || "" },
     });
     if (!res.ok) return false;
     const json = await res.json();
     if (json?.data?.accessToken) {
       accessToken = json.data.accessToken;
+      csrfToken = json.data.csrfToken || csrfToken;
       return true;
     }
     return false;
@@ -52,9 +56,8 @@ async function request(path, { method = "GET", body, isForm = false, retry = tru
   const headers = {};
   if (!isForm && body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-  if (method !== "GET" && method !== "HEAD") {
-    const csrf = readCsrfCookie();
-    if (csrf) headers["X-CSRF-Token"] = csrf;
+  if (method !== "GET" && method !== "HEAD" && csrfToken) {
+    headers["X-CSRF-Token"] = csrfToken;
   }
 
   const res = await fetch(`${API_URL}${path}`, {

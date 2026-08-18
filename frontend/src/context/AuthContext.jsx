@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { authApi } from "../api/auth";
-import { setAccessToken, setUnauthorizedHandler } from "../api/client";
+import { setAccessToken, setCsrfToken, setUnauthorizedHandler } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
 
   const forceLogout = useCallback(() => {
     setAccessToken(null);
+    setCsrfToken(null);
     setUser(null);
   }, []);
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
       try {
         const data = await authApi.refresh();
         setAccessToken(data.accessToken);
+        setCsrfToken(data.csrfToken);
         setUser(data.user);
       } catch {
         // no valid session — that's fine, user just isn't logged in
@@ -40,6 +42,7 @@ export function AuthProvider({ children }) {
   const registerVerifyOtp = useCallback(async (draft, code) => {
     const data = await authApi.registerVerifyOtp({ ...draft, code });
     setAccessToken(data.accessToken);
+    setCsrfToken(data.csrfToken);
     setUser(data.user);
     return data.user;
   }, []);
@@ -47,6 +50,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (phone, password) => {
     const data = await authApi.login({ phone, password });
     setAccessToken(data.accessToken);
+    setCsrfToken(data.csrfToken);
     setUser(data.user);
     return data.user;
   }, []);

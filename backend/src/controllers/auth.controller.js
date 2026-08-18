@@ -19,7 +19,16 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-safety-dummy-password", 10);
 const REFRESH_COOKIE = "refresh_token";
 const REFRESH_COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: "strict",
+  // The deployed frontend and backend live on unrelated domains (Vercel +
+  // Render), not same-site subdomains, so this cookie is inherently
+  // cross-site. SameSite=Strict (or the default) makes browsers refuse to
+  // even store a cookie set by a cross-site response in the first place —
+  // not just withhold it on future requests — which silently broke every
+  // session: login appeared to work, then vanished on the next page load
+  // with no cookie ever saved. SameSite=None is required for a genuinely
+  // cross-site cookie to persist at all, and browsers mandate Secure
+  // alongside it (fine here — production is HTTPS end to end).
+  sameSite: env.nodeEnv === "production" ? "none" : "strict",
   secure: env.nodeEnv === "production",
   maxAge: 30 * 24 * 60 * 60 * 1000,
   path: "/api/auth", // scoped narrowly — this cookie is only ever needed by auth routes
@@ -52,8 +61,15 @@ async function issueSession(res, user) {
   });
 
   res.cookie(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTS);
-  issueCsrfCookie(res);
-  return accessToken;
+  // Also returned directly (not just set as a cookie) because the
+  // double-submit pattern needs the frontend to read this value back —
+  // and across the same cross-site domain split described above, JS on
+  // the frontend's origin can never read a cookie that belongs to the
+  // backend's domain via document.cookie, regardless of SameSite. Handing
+  // it back in the response body sidesteps that entirely; the frontend
+  // holds it in memory the same way it already holds the access token.
+  const csrfToken = issueCsrfCookie(res);
+  return { accessToken, csrfToken };
 }
 
 // POST /api/auth/register/request-otp
@@ -120,8 +136,8 @@ const verifyRegisterOtp = asyncHandler(async (req, res) => {
     data: { phone, name, email, passwordHash, role, emailVerified: true },
   });
 
-  const accessToken = await issueSession(res, user);
-  return ok(res, { accessToken, user: publicUser(user) });
+  const { accessToken, csrfToken } = await issueSession(res, user);
+  return ok(res, { accessToken, csrfToken, user: publicUser(user) });
 });
 
 // POST /api/auth/login
@@ -138,8 +154,8 @@ const login = asyncHandler(async (req, res) => {
   const valid = await bcrypt.compare(password, user?.passwordHash || DUMMY_PASSWORD_HASH);
   if (!user || !user.passwordHash || !valid) return invalid();
 
-  const accessToken = await issueSession(res, user);
-  return ok(res, { accessToken, user: publicUser(user) });
+  const { accessToken, csrfToken } = await issueSession(res, user);
+  return ok(res, { accessToken, csrfToken, user: publicUser(user) });
 });
 
 // POST /api/auth/password/forgot
@@ -226,9 +242,9 @@ const refresh = asyncHandler(async (req, res) => {
   // Rotate: revoke the used token, issue a new pair. If a revoked token is
   // ever presented again, that's a strong signal of theft/replay.
   await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
-  const accessToken = await issueSession(res, user);
+  const { accessToken, csrfToken } = await issueSession(res, user);
 
-  return ok(res, { accessToken, user: publicUser(user) });
+  return ok(res, { accessToken, csrfToken, user: publicUser(user) });
 });
 
 // POST /api/auth/logout

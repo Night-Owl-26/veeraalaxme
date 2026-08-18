@@ -3,13 +3,22 @@ const crypto = require("crypto");
 // Double-submit-cookie CSRF protection for the cookie-authenticated refresh flow.
 // The access token travels in an Authorization header (immune to CSRF by design,
 // since browsers don't auto-attach it), but the httpOnly refresh-token cookie
-// does need this: on login we set a readable csrf_token cookie, the frontend
-// echoes it back as a header on state-changing requests, and we compare the two.
+// does need this: on login we set a readable csrf_token cookie AND return the
+// same value in the response body (the frontend holds that in memory, the same
+// way it already holds the access token — it can't rely on reading this cookie
+// via document.cookie, since the deployed frontend and backend are on unrelated
+// domains and a cookie set by one is invisible to JS on the other, regardless
+// of SameSite). The frontend echoes its in-memory copy back as a header on
+// state-changing requests, and we compare that against the cookie the browser
+// attached automatically.
 function issueCsrfCookie(res) {
   const token = crypto.randomBytes(24).toString("hex");
   res.cookie("csrf_token", token, {
     httpOnly: false,
-    sameSite: "strict",
+    // See REFRESH_COOKIE_OPTS in auth.controller.js for why this must be
+    // "none" (not "strict"/default) in production — same cross-site cookie
+    // storage issue applies here.
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     secure: process.env.NODE_ENV === "production",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
