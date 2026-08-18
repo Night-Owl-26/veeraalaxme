@@ -7,6 +7,19 @@ const env = require("../config/env");
 const uploadRoot = path.resolve(process.cwd(), env.storage.localUploadDir);
 if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot, { recursive: true });
 
+// Callers need to tell "the uploaded file itself is bad" apart from "the
+// storage backend failed" (e.g. misconfigured Cloudinary credentials) so
+// they can show the right message — sniffing the error text for that isn't
+// reliable, since Cloudinary's own errors ("Invalid Signature", "Must
+// supply api_key") don't necessarily mention "cloudinary" at all. `stage`
+// says definitively which step actually failed.
+class StorageError extends Error {
+  constructor(stage, message) {
+    super(message);
+    this.stage = stage; // "process" (sharp/local decode) | "upload" (remote storage backend)
+  }
+}
+
 let cloudinary = null;
 function getCloudinary() {
   if (cloudinary) return cloudinary;
@@ -55,28 +68,38 @@ function hammingDistance(a, b) {
 async function saveImage(buffer, originalName) {
   const ext = ".webp";
   const filename = `${crypto.randomUUID()}${ext}`;
-  const optimized = await sharp(buffer).rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
-  const pHash = await perceptualHash(optimized);
 
-  if (env.storage.provider === "cloudinary") {
-    const result = await uploadToCloudinary(optimized, {
-      folder: "vasthuconnect/properties",
-      public_id: crypto.randomUUID(),
-      resource_type: "image",
-      format: "webp",
-    });
-    return { url: result.secure_url, pHash };
+  let optimized, pHash;
+  try {
+    optimized = await sharp(buffer).rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
+    pHash = await perceptualHash(optimized);
+  } catch (e) {
+    throw new StorageError("process", e.message);
   }
 
-  if (env.storage.provider === "s3") {
-    // Swap in the AWS SDK here — kept out of the base dependency tree so the
-    // project runs with zero cloud credentials in local dev.
-    throw new Error("S3 storage selected but not wired up — see storageService.js");
-  }
+  try {
+    if (env.storage.provider === "cloudinary") {
+      const result = await uploadToCloudinary(optimized, {
+        folder: "vasthuconnect/properties",
+        public_id: crypto.randomUUID(),
+        resource_type: "image",
+        format: "webp",
+      });
+      return { url: result.secure_url, pHash };
+    }
 
-  const filepath = path.join(uploadRoot, filename);
-  fs.writeFileSync(filepath, optimized);
-  return { url: `/uploads/${filename}`, pHash };
+    if (env.storage.provider === "s3") {
+      // Swap in the AWS SDK here — kept out of the base dependency tree so the
+      // project runs with zero cloud credentials in local dev.
+      throw new Error("S3 storage selected but not wired up — see storageService.js");
+    }
+
+    const filepath = path.join(uploadRoot, filename);
+    fs.writeFileSync(filepath, optimized);
+    return { url: `/uploads/${filename}`, pHash };
+  } catch (e) {
+    throw new StorageError("upload", e.message);
+  }
 }
 
 // Extension is looked up from a fixed allowlist keyed on the (server-validated)
@@ -89,25 +112,29 @@ const DOC_EXTENSION_BY_MIME = { "application/pdf": ".pdf", "image/jpeg": ".jpg",
 
 async function saveDocument(buffer, mimetype) {
   const ext = DOC_EXTENSION_BY_MIME[mimetype];
-  if (!ext) throw new Error("Unsupported document type");
+  if (!ext) throw new StorageError("process", "Unsupported document type");
   const filename = `${crypto.randomUUID()}${ext}`;
 
-  if (env.storage.provider === "cloudinary") {
-    const result = await uploadToCloudinary(buffer, {
-      folder: "vasthuconnect/documents",
-      public_id: crypto.randomUUID(),
-      resource_type: "raw",
-      type: "authenticated", // not publicly listable/guessable — signed URL required to read
-    });
-    return { url: result.secure_url };
-  }
+  try {
+    if (env.storage.provider === "cloudinary") {
+      const result = await uploadToCloudinary(buffer, {
+        folder: "vasthuconnect/documents",
+        public_id: crypto.randomUUID(),
+        resource_type: "raw",
+        type: "authenticated", // not publicly listable/guessable — signed URL required to read
+      });
+      return { url: result.secure_url };
+    }
 
-  if (env.storage.provider === "s3") {
-    throw new Error("S3 storage selected but not wired up — see storageService.js");
-  }
+    if (env.storage.provider === "s3") {
+      throw new Error("S3 storage selected but not wired up — see storageService.js");
+    }
 
-  fs.writeFileSync(path.join(uploadRoot, filename), buffer);
-  return { url: `/uploads/${filename}` };
+    fs.writeFileSync(path.join(uploadRoot, filename), buffer);
+    return { url: `/uploads/${filename}` };
+  } catch (e) {
+    throw new StorageError("upload", e.message);
+  }
 }
 
-module.exports = { saveImage, saveDocument, perceptualHash, hammingDistance, uploadRoot };
+module.exports = { saveImage, saveDocument, perceptualHash, hammingDistance, uploadRoot, StorageError };

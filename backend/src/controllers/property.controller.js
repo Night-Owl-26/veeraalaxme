@@ -2,7 +2,7 @@ const prisma = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const { ok, fail, ApiError } = require("../utils/apiResponse");
 const { encryptField, decryptField, maskSurveyNumber } = require("../utils/crypto");
-const { saveImage, saveDocument } = require("../services/storageService");
+const { saveImage, saveDocument, StorageError } = require("../services/storageService");
 const { findDuplicateImageMatch, computeSpamScore } = require("../services/fraudService");
 const { notify } = require("../services/notificationService");
 const { findNearby } = require("../services/nearbyService");
@@ -312,8 +312,8 @@ const uploadImages = asyncHandler(async (req, res) => {
       // client-facing message below is deliberately generic — this is the
       // only place the real cause (e.g. missing/invalid Cloudinary
       // credentials vs. an actually-corrupt image) is visible at all.
-      console.error("[uploadImages] saveImage failed:", e.message);
-      if (/cloudinary/i.test(e.message || "")) {
+      console.error("[uploadImages] saveImage failed:", e instanceof StorageError ? e.stage : "unknown", e.message);
+      if (e instanceof StorageError && e.stage === "upload") {
         throw new ApiError(502, "Image storage isn't configured correctly on the server — contact support");
       }
       throw new ApiError(422, "One of the uploaded files isn't a valid image");
@@ -353,8 +353,8 @@ const uploadDocuments = asyncHandler(async (req, res) => {
     try {
       saved = await saveDocument(file.buffer, file.mimetype);
     } catch (e) {
-      console.error("[uploadDocuments] saveDocument failed:", e.message);
-      if (/cloudinary/i.test(e.message || "")) {
+      console.error("[uploadDocuments] saveDocument failed:", e instanceof StorageError ? e.stage : "unknown", e.message);
+      if (e instanceof StorageError && e.stage === "upload") {
         throw new ApiError(502, "Document storage isn't configured correctly on the server — contact support");
       }
       throw new ApiError(422, "One of the uploaded files couldn't be processed");
