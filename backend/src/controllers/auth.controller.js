@@ -266,4 +266,15 @@ const me = asyncHandler(async (req, res) => {
   return ok(res, { user: publicUser(user) });
 });
 
-module.exports = { requestRegisterOtp, verifyRegisterOtp, login, forgotPassword, resetPassword, refresh, logout, me };
+// GET /api/auth/csrf — bootstraps a CSRF token on a fresh page load, before
+// any login has happened. The frontend holds the token value in memory (see
+// client.js), which a full page reload always wipes clean — so without this,
+// the very first silent-refresh attempt after any reload would have no
+// token to send and get rejected, no matter how a returning user's session
+// was otherwise valid. A plain GET needs no CSRF check of its own.
+const csrf = asyncHandler(async (req, res) => {
+  const csrfToken = issueCsrfCookie(res);
+  return ok(res, { csrfToken });
+});
+
+module.exports = { requestRegisterOtp, verifyRegisterOtp, login, forgotPassword, resetPassword, refresh, logout, me, csrf };

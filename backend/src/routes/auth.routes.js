@@ -14,6 +14,7 @@ router.post("/register/verify-otp", authLimiter, validateBody(registerVerifyOtpS
 router.post("/login", authLimiter, validateBody(loginSchema), ctrl.login);
 router.post("/password/forgot", authLimiter, validateBody(forgotPasswordSchema), ctrl.forgotPassword);
 router.post("/password/reset", authLimiter, validateBody(resetPasswordSchema), ctrl.resetPassword);
+router.get("/csrf", ctrl.csrf);
 router.post("/refresh", verifyCsrf, ctrl.refresh);
 router.post("/logout", verifyCsrf, ctrl.logout);
 router.get("/me", requireAuth, ctrl.me);

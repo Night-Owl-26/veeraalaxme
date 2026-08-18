@@ -20,19 +20,39 @@ export function AuthProvider({ children }) {
 
   // On first load, try to silently resume a session using the httpOnly
   // refresh cookie (if the browser still has one from a previous visit).
+  // The CSRF token is bootstrapped first: it only ever lives in memory on
+  // the frontend, so a full page reload always starts with none at all —
+  // without this, the refresh call below would go out with no CSRF header
+  // and get rejected even for a returning user with a perfectly valid
+  // session.
+  //
+  // The `cancelled` guard matters here specifically because React 18
+  // StrictMode double-invokes effects in development: two overlapping runs
+  // of this effect each rotate the refresh token, so one of them always
+  // loses that race and fails. Without this guard, if the losing (faster,
+  // since a CSRF rejection is a cheap synchronous check) call finished
+  // first, its `finally` would flip loading to false while `user` was still
+  // null, and ProtectedRoute would redirect to /login in that gap — before
+  // the winning call had a chance to actually set the user a moment later.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
+        const { csrfToken: bootstrapped } = await authApi.csrf();
+        if (cancelled) return;
+        setCsrfToken(bootstrapped);
         const data = await authApi.refresh();
+        if (cancelled) return;
         setAccessToken(data.accessToken);
         setCsrfToken(data.csrfToken);
         setUser(data.user);
       } catch {
         // no valid session — that's fine, user just isn't logged in
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   const registerRequestOtp = useCallback(async (draft) => {

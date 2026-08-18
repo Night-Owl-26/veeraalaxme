@@ -6,6 +6,7 @@ export const authApi = {
   login: (payload) => api.post("/auth/login", payload),
   forgotPassword: (payload) => api.post("/auth/password/forgot", payload),
   resetPassword: (payload) => api.post("/auth/password/reset", payload),
+  csrf: () => api.get("/auth/csrf"),
   refresh: () => api.post("/auth/refresh"),
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
